@@ -1,0 +1,135 @@
+---
+title: "day2_exercise"
+output: html_document
+---
+
+
+Use the tiny GSEA framework on your own dataset and compare the results, e.g. use different gene-level methods and different set-level methods. You can use only one gene set or use all gene set in a database (e.g. all GO BP gene sets). 
+
+			
+gene-level	Gene-level transform        set-level	    name
+tvalue	    abs                             mean	    tvalue-abs-mean
+sam	        square	                        sum	        sam-square-sum
+ttest    	binary	                        sum	        ttest-binary-sum
+ttest	    binary	                        chisq	    ttest-binary-chisq
+sam	        none	                        ks      	sam-ks
+tvalue	    none	                        wilcox      tvalue-wilcox
+
+ code is at https://gist.github.com/jokergoo/e8fff4a57ec59efc694b9e730da22b9f
+
+```{r}
+source("https://gist.githubusercontent.com/jokergoo/e8fff4a57ec59efc694b9e730da22b9f/raw/530d6d9eabb6a7c7c6b287549b8fb44efabccc5b/tiny_GSEA_framework.R")
+```
+
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+
+condition = factor(condition)
+```
+
+Load Hallmark gene sets from MSigDB
+
+```{r}
+library(msigdbr)
+gs = msigdbr(category = "H")
+gs = split(gs$gene_symbol, gs$gs_name)
+```
+
+```{r}
+tb = gsea_tiny(expr, condition, geneset = gs, 
+    gene_level_method = "tvalue",
+    transform = "abs",
+    set_level_method = "mean")
+```
+
+
+```{r}
+methods = data.frame(gene_level = c("tvalue", "sam", "ttest", "ttest", "sam", "tvalue"),
+                     transform  = c("abs", "square", "binary", "binary", "none", "none"),
+                     set_level  = c("mean", "sum", "sum", "chisq", "ks", "wilcox"))
+rownames(methods) = c("tvalue-abs-mean", "sam-square-sum", "ttest-binary-sum",
+                      "ttest-binary-chisq", "sam-ks", "tvalue-wilcox")
+methods
+```
+
+
+```{r}
+n_methods = nrow(methods)
+
+res_list = list()
+
+for(i in 1:n_methods) {
+    cat("running method:", rownames(methods)[i], "\n")
+    if(methods$transform[i] == "binary") {
+        
+        tb = gsea_tiny(expr, condition, geneset = gs, 
+                gene_level_method = methods$gene_level[i],
+                transform = methods$transform[i],
+                binarize = function(x) ifelse(x < 0.05, 1, 0),
+                set_level_method = methods$set_level[i])
+        
+    } else {
+        
+        tb = gsea_tiny(expr, condition, geneset = gs, 
+                gene_level_method = methods$gene_level[i],
+                transform = methods$transform[i],
+                set_level_method = methods$set_level[i])
+        
+    }
+    res_list[[i]] = tb
+}
+names(res_list) = rownames(methods)
+```
+
+res_list is a list of data frames
+
+```{r}
+library(ComplexHeatmap)
+
+sig_list = lapply(res_list, function(tb) {
+    rownames(tb)[tb$p.value < 0.05]
+})
+cm = make_comb_mat(sig_list)
+
+UpSet(cm,
+    top_annotation = upset_top_annotation(cm, add_numbers = TRUE),
+    right_annotation = upset_right_annotation(cm, add_numbers = TRUE)
+)
+```
+
+```{r}
+res_list_by_gene = list()
+
+for(i in 1:n_methods) {
+    cat("running method:", rownames(methods)[i], "\n")
+    if(methods$transform[i] == "binary") {
+        tb = gsea_tiny(expr, condition, geneset = gs, 
+                gene_level_method = methods$gene_level[i],
+                transform = methods$transform[i],
+                binarize = function(x) ifelse(x < 0.05, 1, 0),
+                set_level_method = methods$set_level[i], perm_type = "gene")
+    } else {
+        tb = gsea_tiny(expr, condition, geneset = gs, 
+                gene_level_method = methods$gene_level[i],
+                transform = methods$transform[i],
+                set_level_method = methods$set_level[i], perm_type = "gene")
+    }
+    res_list_by_gene[[i]] = tb
+}
+names(res_list_by_gene) = rownames(methods)
+```
+
+```{r}
+sig_list = lapply(res_list_by_gene, function(tb) {
+    rownames(tb)[tb$p.value < 0.05]
+})
+cm = make_comb_mat(sig_list)
+
+UpSet(cm,
+    top_annotation = upset_top_annotation(cm, add_numbers = TRUE),
+    right_annotation = upset_right_annotation(cm, add_numbers = TRUE)
+)
+```

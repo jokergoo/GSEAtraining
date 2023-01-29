@@ -1,0 +1,113 @@
+---
+title: "day2_EnrichmentBrowser"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+Package **EnrichmentBrowser** integrates a lot of GSEA methods. The integrated methods are:
+
+```{r}
+library(EnrichmentBrowser)
+sbeaMethods()
+```
+
+**EnrichmentBrowser** needs a special format (in `SummarizedExperiment`) as input.
+Condition labels should be stored in a column "GROUP". Log2 fold change and adjusted p-values should be saved in "FC" and "ADJ.PVAL" columns.
+
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+
+
+library(SummarizedExperiment)
+se = SummarizedExperiment(assays = SimpleList(expr = expr))
+colData(se) = DataFrame(GROUP = ifelse(condition == "WT", 1, 0))
+
+l = condition == "WT"
+
+library(genefilter)
+tdf = rowttests(expr, factor(condition))
+rowData(se) = DataFrame(FC = log2(rowMeans(expr[, l])/rowMeans(expr[, !l])),
+                        ADJ.PVAL = p.adjust(tdf$p.value))
+se
+```
+
+**Note, to run `eaBrowse()`, you need to explicitly convert to ENTREZID.**
+
+```{r}
+se = idMap(se, org = "hsa", from = "SYMBOL", to = "ENTREZID")  # !! Gene ID must be converted to EntrezID
+```
+
+We load the hallmark gene sets by package **msigdbr**.
+
+**When using the Entrez ID, make sure the "numbers" are converted to "characters".**
+
+```{r}
+library(msigdbr)
+gs = msigdbr(category = "H")
+gs = split(gs$human_entrez_gene, gs$gs_name)  # Entrez ID must be used
+gs = lapply(gs, as.character)                 # be careful Entrez ID might be wrongly used as integers, convert them into characters
+```
+
+Simply call `sbea()` function with a specific method:
+
+**Note now you can use `eaBowse(res)` to create the tiny website for detailed results.**
+
+```{r, mess}
+res = sbea(method = "gsea", se = se, gs = gs)
+tb = gsRanking(res, signif.only = FALSE)
+```
+
+
+Next we run all supported GSEA methods in **EnrichmentBrowser**.
+
+```{r}
+all_gsea_methods = sbeaMethods()
+all_gsea_methods
+```
+
+
+
+```{r, eval = !file.exists("enrichmentbrowser_res_list.RData"), results="none"}
+all_gsea_methods = setdiff(all_gsea_methods, "padog")
+res_list = lapply(all_gsea_methods, function(method) {
+    sbea(method = method, se = se, gs = gs)
+})
+names(res_list) = all_gsea_methods
+```
+
+```{r, echo = FALSE, eval = !file.exists("enrichmentbrowser_res_list.RData")}
+save(res_list, file = "enrichmentbrowser_res_list.RData")
+```
+
+
+```{r, echo = FALSE}
+load("enrichmentbrowser_res_list.RData")
+```
+
+We compare the significant gene sets from different methods.
+
+```{r}
+tb_list = lapply(res_list, gsRanking)
+tb_list
+```
+
+```{r}
+tb_list = tb_list[sapply(tb_list, length) > 0]
+
+library(ComplexHeatmap)
+cm = make_comb_mat(lapply(tb_list, function(x) x[[1]]))
+UpSet(cm,
+    top_annotation = upset_top_annotation(cm, add_numbers = TRUE),
+    right_annotation = upset_right_annotation(cm, add_numbers = TRUE)
+)
+```

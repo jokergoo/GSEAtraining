@@ -1,0 +1,35 @@
+---
+title: "Get pathways from Reactome"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+Reactome is another popular pathway database. It organise pathways in an hierarchical category, which contains pathways and sub pathways
+or pathway components. The up-to-date pathway data can be direclty found at https://reactome.org/download-data.
+
+There is a **reactome.db** on Bioconductor. Similar as other annotation packages. Users can type `reactome.db::` with two continuous tabs to see the objects
+supported in the package. In it, the important objects are 
+
+- `reactomePATHID2EXTID` contains mappings between reacotme pathway IDs and gene entrez IDs
+- `reactomePATHID2NAME` contains pathway names
+
+```{r}
+library(reactome.db)
+tb = toTable(reactomePATHID2EXTID)
+head(tb)
+p2n = toTable(reactomePATHID2NAME)
+head(p2n)
+```
+
+In the previous code, we use the function `toTable()` to retrieve the data as data frames. Readers may try `as.list()` on the two objects and compare the output.
+
+Reactome also contains pathway for multiple organisms. In the reactome ID, teh second section contains the organism, e.g. in previous output `HSA`. 
+
+```{r}
+table( gsub("^R-(\\w+)-\\d+$", "\\1", p2n[, 1]) )
+```
+
+Again, **reactome.db** only contains pathways as list of genes. 

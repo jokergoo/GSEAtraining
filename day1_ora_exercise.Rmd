@@ -1,0 +1,130 @@
+---
+title: "day1_exercise"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+## Use your own differential gene list of the gene list in "E-GEOD-101794-analytics.tsv"
+
+If using your own gene list, you can first simply apply a two-sample t-test on rows, calculate
+adjusted p-values and set a cutoff for adjusted p-values to get the list of differential gene list.
+
+If using the file "E-GEOD-101794-analytics.tsv", take the gene symbol column as gene IDs and the third column
+as p-values. Remember to apply p-value adjustment and set a cutoff of adjusted p-values for filtering
+diff genes.
+
+If your genes IDs are not Entrez ID, use the function `convert_to_entrez_id()` introduced in "day1_clusterProfiler_ora.html".
+
+### Use MSigDB gene sets
+
+Follow the instruction in "day1_msigdbr.html" and extract gene sets in category "C5" and subcategory "GO:BP".
+
+### Use clusterProfiler
+
+Compare enrichment results under different settings:
+
+1. with default background 
+2. set background as total genes in the experiment.
+
+You can use a Venn diagram or a Euler (via package **eulerr**) to compare.
+
+You can also compare the selection of cutoffs for adjusted p-values for diff genes:
+
+1. set fdr < 0.05
+2. set fdr < 0.01
+3. select top 500 most significant genes
+4. select top 1000 most significant genes
+
+### Compare hypergeometric distribution and chi-square test
+
+Write a function `ora_test()` which accepts three arguments:
+
+- diff gene
+- bg gene
+- genes in the set
+
+The function first construct the 2x2 contigency table and calculated p-values
+from hypergeometric distribution and chi-square test (`day1_ora_example.html` might be helpful for you).
+
+```{r}
+ora_test = function(diff_gene, bg_gene, gene_set) {
+    # number of #DE
+    n10 = length(diff_gene)
+    n01 = length(gene_set)
+    n = length(bg_gene)
+    
+    # #DE in the set
+    n11 = length(intersect(diff_gene, gene_set))
+    n21 = n01 - n11
+    n12 = n10 - n11
+    
+    # #non-DE
+    n20 = n - n10
+    
+    # gene not in the set
+    n02 = n - n01
+    
+    n22 = n02 - n12
+    
+    # hypergeometric distribution
+    p1 = 1 - phyper(n11-1, n10, n20, n01)
+    # chi-square test
+    t = chisq.test(matrix(c(n11, n21, n12, n22), nrow = 2), correct = FALSE)
+    
+    print(matrix(c(n11, n21, n12, n22), nrow = 2))
+    p2 = t$p.value
+    
+    var = c(p1, p2)
+    names(var) = c("hyper", "chisq")
+    
+    return(var)
+}
+```
+
+
+```{r}
+load("demo_ora.RData")
+# two gene lists
+# - diff_gene diff gene list
+# - bg_gene background gene list
+```
+
+```{r}
+library(msigdbr)
+gs_db = msigdbr(category = "C2", subcategory = "CP:KEGG")
+gene_set = gs_db$gene_symbol[gs_db$gs_name == "KEGG_ABC_TRANSPORTERS"]
+```
+
+```{r}
+# - diff_gene
+# - bg_gene
+# - gene_set
+
+ora_test(diff_gene, bg_gene, gene_set)
+```
+
+```{r}
+lt = list(
+    geneset1 = gene_set ,
+    geneset2 = ...
+
+)
+
+# lt is a list of gene sets
+
+n_set = length(lt)
+pmat = matrix(nrow = n_set, ncol = 2)
+for(i in 1:n_set) {
+    pmat[i, ] = ora_test(diff_gene, bg_gene, lt[[i]])
+}
+
+# a p-value (2-column) matrix, first colum is form hypergeometric, the second colum is from chi-sq test
+# compare the two list of p-values
+```
+
+The function returns a vector of length two: p-values from the two test.
+
+Note: the object returned by `msigdbr()` is a data frame where each row contains mapping of a single gene to a single gene set.
+You need to convert it into a list where each element in the list is a vector of genes in every gene set (use `split()` function).

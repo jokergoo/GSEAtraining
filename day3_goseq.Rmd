@@ -1,0 +1,163 @@
+---
+title: "day3_goseq"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+Only a significant diff gene list is needed for GOseq analysis.
+
+```{r}
+tb = read.table("E-GEOD-101794-analytics.tsv", sep = "\t", skip = 1)
+tb = tb[, c(1, 3)]
+colnames(tb) = c("gene", "p.value")
+tb = tb[!is.na(tb$p.value), ]
+tb$fdr = p.adjust(tb$p.value, "BH")
+```
+
+Construct a binary vector where 1 means the gene is diff.
+
+```{r}
+genes = ifelse(tb$fdr < 0.05, 1, 0)
+genes[is.na(genes)] = 0
+names(genes) = tb$gene
+table(genes)
+```
+
+We estimate the distribution of p_diff against gene length:
+
+```{r, message = FALSE}
+library(goseq)
+pwf = nullp(genes, "hg19", "ensGene")
+```
+
+Then use `goseq()` function to perform the test:
+
+```{r, message = FALSE}
+tb1 = goseq(pwf, "hg19", "ensGene")
+head(tb1)
+```
+
+This time we keep the genes with p-values as `NA` (they are basically genes not expressed).
+
+```{r}
+tb = read.table("E-GEOD-101794-analytics.tsv", sep = "\t", skip = 1)
+tb = tb[, c(1, 3)]
+colnames(tb) = c("gene", "p.value")
+tb$fdr = p.adjust(tb$p.value, "BH")
+genes = ifelse(tb$fdr < 0.05, 1, 0)
+genes[is.na(genes)] = 0
+names(genes) = tb$gene
+table(genes)
+pwf = nullp(genes, "hg19", "ensGene")
+```
+
+This becomes interesting. If include non-expressed genes, the bias becomes visible... Note we assume non-expressed
+genes are not differentially expressed.
+
+So actually it means the bias comes from the p_expressed to gene length? This has to be studies 
+with more details.
+
+```{r, message = FALSE}
+tb2 = goseq(pwf, "hg19", "ensGene")
+```
+
+
+We compare `tb1` and `tb2`:
+
+```{r}
+library(eulerr)
+lt = list(
+    test1 = tb1$category[p.adjust(tb1$over_represented_pvalue, "BH") < 0.05], 
+    test2 = tb2$category[p.adjust(tb2$over_represented_pvalue, "BH") < 0.05]
+)
+plot(euler(lt), quantities = TRUE)
+```
+
+Does it mean the correction has no effect?
+
+We also compare to ORA.
+
+```{r}
+tb = read.table("E-GEOD-101794-analytics.tsv", sep = "\t", skip = 1)
+tb = tb[, c(2, 3)]
+colnames(tb) = c("gene", "p.value")
+tb$fdr = p.adjust(tb$p.value, "BH")
+l = tb$fdr < 0.05; l[is.na(l)] = FALSE
+diff_gene = tb$gene[l]
+```
+
+`diff_gene` are gene symbols. We convert them to Entrez IDs:
+
+```{r}
+convert_to_entrez_id = function(x) {
+	if(is.matrix(x)) {
+		map = cola:::guess_id_mapping(rownames(x))
+		if(is.function(map)) {
+		    new_rn = map(rownames(x))
+		} else {
+		    new_rn = map[rownames(x)]
+		}
+		l = is.na(new_rn)
+
+		x = x[!l, , drop = FALSE]
+		new_rn = new_rn[!l]
+
+		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+			colMeans(x[ind, , drop = FALSE])
+		}))
+		return(x2)
+
+	} else if(is.numeric(x)) {
+		map = cola:::guess_id_mapping(names(x))
+		x2 = s
+		if(is.function(map)) {
+		    names(x2) = map(names(x))
+		} else {
+		    names(x2) = map[names(x)]
+		}
+		x2 = x2[!is.na(names(x2))]
+		x2 = tapply(x2, names(x2), mean)
+		return(x2)
+	} else {
+	    map = cola:::guess_id_mapping(x)
+	    if(is.function(map)) {
+	        x2 = map(x)
+	    } else {
+	        x2 = map[x]
+	    }
+	    x2 = x2[!is.na(x2)]
+	    x2 = unique(x2)
+	    return(x2)
+	}
+}
+diff_gene = convert_to_entrez_id(diff_gene)
+```
+
+We use **clusterProfiler** to perform ORA analysis:
+
+
+```{r, message = FALSE}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+tb3 = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+```
+
+Now we compare ORA to GOseq results. Note `tb1` and `tb2` contains results for all three ontologies (BP, CC, MF). Here
+we only need BP.
+
+```{r}
+tb1 = tb1[tb1$ontology == "BP", ]
+tb2 = tb2[tb2$ontology == "BP", ]
+
+library(eulerr)
+lt = list(
+    test1 = tb1$category[p.adjust(tb1$over_represented_pvalue, "BH") < 0.05], 
+    test2 = tb2$category[p.adjust(tb2$over_represented_pvalue, "BH") < 0.05],
+    ora = tb3$ID[p.adjust(tb3$pvalue, "BH") < 0.05]
+)
+plot(euler(lt), quantities = TRUE)
+```
+
+Please note the difference may also come from the different implementation of the tools (e.g. GO versions, precessings), while not the methods selves.

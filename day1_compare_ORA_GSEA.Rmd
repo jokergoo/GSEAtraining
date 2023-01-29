@@ -1,0 +1,185 @@
+---
+title: "day1_compare_ORA_GSEA"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r, echo = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    tidy  = FALSE,
+    message = FALSE)
+```
+
+The following code reads the expression matrix and the condition labels.
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+```
+
+The analysis starts from here.
+
+The following function converts gene IDs to EntreZ gene ID:
+
+```{r}
+convert_to_entrez_id = function(x) {
+	if(is.matrix(x)) {
+		map = cola:::guess_id_mapping(rownames(x))
+		if(is.function(map)) {
+		    new_rn = map(rownames(x))
+		} else {
+		    new_rn = map[rownames(x)]
+		}
+		l = is.na(new_rn)
+
+		x = x[!l, , drop = FALSE]
+		new_rn = new_rn[!l]
+
+		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+			colMeans(x[ind, , drop = FALSE])
+		}))
+		return(x2)
+
+	} else if(is.numeric(x)) {
+		map = cola:::guess_id_mapping(names(x))
+		x2 = s
+		if(is.function(map)) {
+		    names(x2) = map(names(x))
+		} else {
+		    names(x2) = map[names(x)]
+		}
+		x2 = x2[!is.na(names(x2))]
+		x2 = tapply(x2, names(x2), mean)
+		return(x2)
+	} else {
+	    map = cola:::guess_id_mapping(x)
+	    if(is.function(map)) {
+	        x2 = map(x)
+	    } else {
+	        x2 = map[x]
+	    }
+	    x2 = x2[!is.na(x2)]
+	    x2 = unique(x2)
+	    return(x2)
+	}
+}
+```
+
+We convert gene IDs to Entrez IDs:
+
+```{r}
+expr = convert_to_entrez_id(expr)
+```
+
+We apply t-test to every gene.
+
+```{r}
+p = apply(expr, 1, function(x) {
+    x1 = x[condition == "WT"]
+    x2 = x[condition == "MUT"]
+    
+    t.test(x1, x2)$p.value
+})
+```
+
+
+row* family functions
+
+-rowMeans  faster version of apply(mat, 1, mean)
+-rowSds    apply(mat, 1, sd)
+
+```{r}
+library(genefilter)
+tdf = rowttests(expr, factor(condition))  # the second must be a "factor"
+tdf$fdr = p.adjust(tdf$p.value, "BH")
+sum(tdf$fdr < 0.05)  # number of diff genes
+```
+
+It seems there are not too many diff genes. We look at the distribution of the t-statistics:
+
+```{r}
+plot(sort(tdf$statistic))
+```
+
+Instead of setting a cutoff for FDR, we set a cutoff for t-statistics, just to get
+enough number of diff genes.
+
+```{r}
+sum(abs(tdf$statistic) > 2)
+```
+
+First we perform ORA, using GO BP gene sets:
+
+```{r, message = FALSE}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+l_sig = abs(tdf$statistic) > 2
+tb_ora = enrichGO(gene  = rownames(expr)[l_sig],
+                  OrgDb = org.Hs.eg.db,
+                  ont   = "BP",
+                  pAdjustMethod = "BH")
+tb_ora = as.data.frame(tb_ora)
+```
+
+
+Then we perform GSEA, using t-statistics as gene scores. Note here the p-values
+are calculated by gene permutation.
+
+```{r}
+s = tdf$statistic
+names(s) = rownames(tdf)   # s must have names (gene IDs)
+s = sort(s, decreasing = TRUE)  # s must be pre-sorted
+tb_gsea = gseGO(geneList = s, 
+                OrgDb = org.Hs.eg.db,
+                ont   = "BP",
+                pAdjustMethod = "BH")
+tb_gsea = as.data.frame(tb_gsea)
+```
+
+We compare the two significant GO lists:
+
+```{r}
+library(eulerr)
+plot(euler(list(ORA = tb_ora$ID, GSEA = tb_gsea$ID)), quantities = TRUE)
+```
+
+Recall ORA is sensitive to selection of background genes and cutoff of diff genes.
+Next we first set background for ORA, which is the total genes in the matrix:
+
+```{r, message = FALSE}
+l_sig = abs(tdf$statistic) > 2
+tb_ora_with_bg = enrichGO(gene = rownames(expr)[l_sig],
+                  universe = rownames(expr),
+                  OrgDb = org.Hs.eg.db,
+                  ont   = "BP",
+                  pAdjustMethod = "BH")
+tb_ora_with_bg = as.data.frame(tb_ora_with_bg)
+nrow(tb_ora_with_bg)
+```
+
+OMG! If setting the background (`r nrow(expr)` genes), there is no significant gene set anymore!
+
+We also change the cutoff of gene-level t-statistics to 1.5, without background.
+
+```{r}
+l_sig = abs(tdf$statistic) > 1.5
+tb_ora_1.5 = enrichGO(gene  = rownames(expr)[l_sig],
+                  OrgDb = org.Hs.eg.db,
+                  ont   = "BP",
+                  pAdjustMethod = "BH")
+tb_ora_1.5 = as.data.frame(tb_ora_1.5)
+```
+
+We compare the significant GO lists:
+
+```{r}
+plot(euler(list(ORA = tb_ora$ID, 
+                ORA_1.5 = tb_ora_1.5$ID, 
+                GSEA = tb_gsea$ID)), 
+    quantities = TRUE)
+```

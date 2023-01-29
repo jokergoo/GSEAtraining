@@ -1,0 +1,51 @@
+---
+title: "cola"
+output: html_document
+---
+
+```{r}
+mat = readRDS("golub_all_aml_gene_symbol_expr.rds")
+dim(mat)
+```
+
+Perform consensus clustering/partitioning:
+
+```{r}
+library(cola)
+res = consensus_partition(mat)
+```
+
+Select the best number of subgroups:
+
+```{r}
+collect_plots(res)
+```
+
+dimension reduction plot
+
+```{r}
+dimension_reduction(res, k = 3)
+```
+
+Get the signature genes:
+
+```{r}
+tb = get_signatures(res, k = 3)
+```
+
+Perform functional enrichment analysis on each row-group.
+
+```{r}
+lt = functional_enrichment(res)
+```
+
+Merge the four enrichment results:
+
+```{r}
+library(simplifyEnrichment)
+simplifyGOFromMultipleLists(lt)
+```
+
+```{r}
+simplifyGOFromMultipleLists(lt, control = list(cutoff = 0.8))
+```

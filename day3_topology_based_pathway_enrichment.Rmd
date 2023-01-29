@@ -1,0 +1,186 @@
+---
+title: "day3_topology_based_pathway_enrichment"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+We read the expression matrix as well as the condition labels.
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+```
+
+We convert the gene IDs to Entrez ID because later the genes in pathways are all in Entrez ID.
+
+```{r}
+convert_to_entrez_id = function(x) {
+	if(is.matrix(x)) {
+		map = cola:::guess_id_mapping(rownames(x))
+		if(is.function(map)) {
+		    new_rn = map(rownames(x))
+		} else {
+		    new_rn = map[rownames(x)]
+		}
+		l = is.na(new_rn)
+
+		x = x[!l, , drop = FALSE]
+		new_rn = new_rn[!l]
+
+		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+			colMeans(x[ind, , drop = FALSE])
+		}))
+		return(x2)
+
+	} else if(is.numeric(x)) {
+		map = cola:::guess_id_mapping(names(x))
+		x2 = s
+		if(is.function(map)) {
+		    names(x2) = map(names(x))
+		} else {
+		    names(x2) = map[names(x)]
+		}
+		x2 = x2[!is.na(names(x2))]
+		x2 = tapply(x2, names(x2), mean)
+		return(x2)
+	} else {
+	    map = cola:::guess_id_mapping(x)
+	    if(is.function(map)) {
+	        x2 = map(x)
+	    } else {
+	        x2 = map[x]
+	    }
+	    x2 = x2[!is.na(x2)]
+	    x2 = unique(x2)
+	    return(x2)
+	}
+}
+```
+
+```{r}
+expr = convert_to_entrez_id(expr)
+```
+
+Package **EnrichmentBrowser** supports variety of topology-based pathway enrichment methods.
+It needs a special format (in `SummarizedExperiment`) as input.
+
+Condition labels should be stored in a column "GROUP":
+
+```{r}
+library(SummarizedExperiment)
+se = SummarizedExperiment(assays = SimpleList(expr = expr))
+colData(se) = DataFrame(GROUP = ifelse(condition == "WT", 1, 0))
+```
+
+Log2 fold change and adjusted p-values should be saved in "FC" and "ADJ.PVAL" columns:
+
+```{r}
+l = condition == "WT"
+
+library(genefilter)
+tdf = rowttests(expr, factor(condition))
+rowData(se) = DataFrame(FC = log2(rowMeans(expr[, l])/rowMeans(expr[, !l])),
+                        ADJ.PVAL = p.adjust(tdf$p.value, "BH"))
+```
+
+
+Now we have `se` set up:
+
+```{r}
+se
+```
+
+Get KEGG pathways.
+
+```{r}
+library(EnrichmentBrowser)
+hsa.gs = getGenesets(org = "hsa", db = "kegg")
+hsa.grn = compileGRN(org="hsa", db="kegg", map2entrez=FALSE)
+```
+
+We put expression data and pathway data to `nbea()` function. Here we use `ggea` method.
+
+```{r}
+res = nbea(method = "ggea", se = se, gs = hsa.gs, grn = hsa.grn)
+gsRanking(res)
+```
+
+`eaBrowse()` visualizes the results in a Shiny app:
+
+```{r, eval=FALSE}
+eaBrowse(res)
+```
+
+All topology-based methods:
+
+```{r}
+all_tp_methods = nbeaMethods()
+all_tp_methods
+```
+
+We run all methods. Note some methods are extremely slow to run. `ganpa` is excluded
+because there is an error when run it. `topologygsa` is excluded because it runs very slow.
+`netgsa` is excluded because of the inconsistency between bioconductor versions.
+
+```{r, eval = !file.exists("topo_res_list.RData"), results="none"}
+all_tp_methods = setdiff(all_tp_methods, c("ganpa", "topologygsa", "netgsa"))
+res_list = lapply(all_tp_methods, function(method) {
+    print(method)
+    nbea(method = method, se = se, gs = hsa.gs, grn = hsa.grn)
+})
+names(res_list) = all_tp_methods
+```
+
+```{r, echo = FALSE, eval = !file.exists("topo_res_list.RData")}
+save(res_list, file = "topo_res_list.RData")
+```
+
+
+```{r, echo = FALSE}
+load("topo_res_list.RData")
+```
+
+
+Get the list of significant pathways from each method. Note `gsRanking()` basically
+extracts the result table.
+
+```{r}
+sig_path_list = lapply(res_list, function(x) {
+    tb = gsRanking(x, signif.only = FALSE)
+    tb$fdr = p.adjust(tb$PVAL, "BH")
+    tb$GENE.SET[tb$fdr < 0.05]
+})
+sapply(sig_path_list, length)
+```
+
+Some methods generate no significant pathways under fdr < 0.05.
+
+We compare significant pathways for all methods:
+
+```{r}
+library(eulerr)
+plot(euler(sig_path_list), quantities = TRUE)
+```
+
+The results shows the results from different methods actually varies a lot.
+
+If we also compare to GSEA method.
+
+```{r}
+res_gsea = sbea(method = "gsea", se = se, gs = hsa.gs)
+res_gsea_tb = gsRanking(res_gsea, signif.only = FALSE)
+res_gsea_tb$fdr = p.adjust(res_gsea_tb$PVAL, "BH")
+sig_pathway_gsea = res_gsea_tb$GENE.SET[res_gsea_tb$fdr < 0.05]
+length(sig_pathway_gsea)
+```
+
+Unfortunately, there is no significant pathways.
+

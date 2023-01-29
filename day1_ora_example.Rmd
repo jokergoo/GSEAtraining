@@ -1,0 +1,150 @@
+---
+title: "day1_ora_example"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+# Examples of ORA analysis
+
+```{r}
+load("demo_ora.RData")
+```
+
+The lengths of the gene lists:
+
+```{r}
+length(bg_gene)
+length(diff_gene)
+length(gene_set)
+length(intersect(diff_gene, gene_set))
+```
+
+We fill into the 2x2 contigency table:
+
+|      | in the set | not in the set| total |
+|------|------------:|---------------:|-------:|
+|DE    |  $n_{11}$    |     $n_{12}$    |  $n_{1+}$ |
+|not DE|  $n_{21}$    |     $n_{22}$    |  $n_{2+}$ |
+|total |  $n_{+1}$    |     $n_{+2}$    |  $n$ |
+
+<style>
+.table {
+width:400px;
+}
+</style>
+
+Then we fill all values into the 2x2 table:
+
+|      | in the set | not in the set| total |
+|------|------------:|---------------:|-------:|
+|DE    |  14    |     954   |  968 |
+|not DE|  186    |     37438   |  37624 |
+|total |  200    |     38392   |  38592 |
+
+
+**By hypergeometric distribution**
+
+All genes are separated into two distinct sets: in the gene set and not in the gene set:
+
+```{r}
+1 - phyper(14-1, 200, 38392, 968)
+```
+
+The separation can be performed in the other dimension: diff genes and non-diff genes:
+
+```{r}
+1 - phyper(14-1, 968, 37624, 200)
+```
+
+**By Fisher's Exact test**
+
+```{r}
+fisher.test(matrix(c(14, 186, 954, 37438), nrow = 2))
+```
+
+**By Binomial distribution**
+
+p = probability of a gene being diff:
+
+```{r}
+1 - pbinom(14-1, 200, 968/38592)
+```
+
+Or p = probability of a gene being in the set:
+
+```{r}
+1 - pbinom(14-1, 968, 200/38592)
+```
+
+**By Chi-square test**
+
+```{r}
+chisq.test(matrix(c(14, 186, 954, 37438), nrow = 2), correct = FALSE)
+```
+
+**By two-sample _z_-test**
+
+```{r}
+p1 = 14/200
+p2 = 954/38392
+p = 968/38592
+
+z = abs(p1 - p2)/sqrt(p*(1-p))/sqrt(1/200 + 1/38392)
+2*pnorm(z, lower.tail = FALSE)
+z^2
+```
+
+We can also do in the other dimension, the tests are identical:
+
+```{r}
+p1 = 14/968
+p2 = 186/37624
+p = 200/38592
+
+z = abs(p1 - p2)/sqrt(p*(1-p))/sqrt(1/968 + 1/37624)
+2*pnorm(z, lower.tail = FALSE)
+z^2
+```
+
+**Test the speed of various tests:**
+
+```{r}
+library(microbenchmark)
+
+microbenchmark(
+	hyper = 1 - phyper(13, 200, 38392, 968),
+	fisher = fisher.test(matrix(c(14, 186, 954, 37438), nrow = 2)),
+	binom = 1 - pbinom(13, 968, 200/38592),
+	chisq = chisq.test(matrix(c(14, 186, 954, 37438), nrow = 2), correct = FALSE),
+	ztest = {
+		p1 = 14/200
+		p2 = 954/38392
+		p = 968/38592
+
+		z = abs(p1 - p2)/sqrt(p*(1-p))/sqrt(1/200 + 1/38392)
+		2*pnorm(z, lower.tail = FALSE)
+	},
+	times = 1000
+)
+```
+
+**The effect of background size**
+
+```{r}
+1 - phyper(13, 200, 38392, 968)
+1 - phyper(13, 200, 38392 - 10000, 968)
+1 - phyper(13, 200, 38392 - 20000, 968)
+1 - phyper(13, 200, 38392 + 10000, 968)
+1 - phyper(13, 200, 38392 + 20000, 968)
+```
+
+**Sensitivity of the small number of diff genes in the set**
+
+```{r}
+1 - phyper(13, 200, 38392, 968)
+1 - phyper(13-3, 200, 38392, 968)
+1 - phyper(13+3, 200, 38392, 968)
+```

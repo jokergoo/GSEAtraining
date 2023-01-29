@@ -1,0 +1,101 @@
+---
+title: "day3_piano"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+**piano** support many gene set-level statistics. It accepts input as matrix or 
+as a vector of gene-level scores. In this example, we use the pre-computed gene-level
+scores which is the t-value in a two-condition comparison:
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+
+library(genefilter)
+s = rowttests(expr, factor(condition))[, "statistic"]
+names(s) = rownames(expr)
+```
+
+We use the hallmark gene sets from MSigDB.
+
+```{r}
+library(msigdbr)
+gs = msigdbr(category = "H")
+```
+
+**piano** needs the gene sets data to be stored in a object in a specific format:
+
+```{r}
+library(piano)
+gs = loadGSC(gs[, c("gene_symbol", "gs_name")])
+```
+
+`runGSA()` runs GSEA analysis. The default gene-set-level method is "mean" (take the mean of gene-level statistics).
+
+Note since the input is a vector of gene-level scores, p-values are calculated based on gene permutation.
+
+```{r}
+res = runGSA(geneLevelStats = s, gsc = gs)
+```
+
+`exploreGSAres()` visualizes the results via a Shiny app.
+
+The result table can be extracted with `GSAsummaryTable()`:
+
+```{r}
+res_tb = GSAsummaryTable(res)
+head(res_tb)
+```
+
+`runGSA()` can only run a single method. Here we use `lapply()` to run multiple methods:
+
+```{r, message=FALSE, eval = !file.exists("piano_res_list.RData")}
+all_set_stats = c("mean", "median", "fgsea", "page")
+res_list = lapply(all_set_stats, function(stat) {
+    runGSA(geneLevelStats = s, gsc = gs, geneSetStat = stat)
+})
+names(res_list) = all_set_stats
+```
+
+```{r, echo = FALSE, eval = !file.exists("piano_res_list.RData")}
+save(res_list, file = "piano_res_list.RData")
+```
+
+
+```{r, echo = FALSE}
+load("piano_res_list.RData")
+```
+
+There is a `consensusHeatmap()` function in **piano** which draws a heatmap of the top gene sets by averaging ranks from multiple methods.
+
+```{r, fig.height=8}
+consensusHeatmap(res_list, method = "mean")
+```
+
+Next we extract the p-values from all methods:
+
+```{r}
+p_list = lapply(res_list, function(x) {
+    GSAsummaryTable(x)[, 3]
+})
+```
+
+
+If we use **ComplexHeatmap** for heatmaps.
+
+```{r}
+library(ComplexHeatmap)
+rank_mat = do.call(cbind, lapply(p_list, rank))
+Heatmap(rank_mat, name = "p-value rank")
+```
+
+
+

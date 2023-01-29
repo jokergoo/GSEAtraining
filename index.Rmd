@@ -1,0 +1,62 @@
+---
+title: "The list of R markdown documents"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+### Day 1
+
+Gene set databases
+
+- [day1_process_GO.html](day1_process_GO.html)
+- [day1_msigdbr.html](day1_msigdbr.html)
+
+ORA
+
+- [day1_ora_example.html](day1_ora_example.html)
+- [day1_clusterProfiler_ora.html](day1_clusterProfiler_ora.html)
+- [day1_ora_exercise.html](day1_ora_exercise.html)
+
+GSEA tool
+
+- [day1_gsea_example.html](day1_gsea_example.html)
+- [day1_clusterProfiler_gsea.html](day1_clusterProfiler_gsea.html)
+- [day1_gsea_exercise.html](day1_gsea_exercise.html)
+
+
+Compare ORA and GSEA
+
+- [day1_compare_ORA_GSEA.html](day1_compare_ORA_GSEA.html)
+
+### Day 2
+
+- [day2_tiny_GSEA_framework.html](day2_tiny_GSEA_framework.html)
+- [day2_EnrichmentBrowser.html](day2_EnrichmentBrowser.html)
+
+### Day 3
+
+On specific data types
+
+- [day3_rGREAT.html](day3_rGREAT.html)
+- [day3_goseq.html](day3_goseq.html)
+
+Single sample GSEA
+
+- [day3_GSVA.html](day3_GSVA.html)
+
+Topology-based pathway enrichment
+
+- [day3_topology_based_pathway_enrichment.html](day3_topology_based_pathway_enrichment.html)
+
+Ensemble of multiple GSEA results
+
+- [day3_piano.html](day3_piano.html)
+
+### Day 4
+
+- [day4_visualization.html](day4_visualization.html)
+- [day4_simplifyEnrichment.html](day4_simplifyEnrichment.html)
+

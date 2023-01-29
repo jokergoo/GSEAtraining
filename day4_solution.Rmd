@@ -1,0 +1,151 @@
+---
+title: "day4_solution"
+output: html_document
+---
+
+
+Use the p53 dataset and perform both ORA and GSEA analysis
+
+For ORA:
+Apply t-test on genes and select genes whose abs(t-value) > 2 as diff genes
+Use clusterProfiler package to perform ORA analysis.
+
+For GSEA:
+Use t-value as gene-level scores
+Use clusterProfiler to perform GSEA analysis
+
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+
+convert_to_entrez_id = function(x) {
+    if(is.matrix(x)) {
+        map = cola:::guess_id_mapping(rownames(x))
+        if(is.function(map)) {
+            new_rn = map(rownames(x))
+        } else {
+            new_rn = map[rownames(x)]
+        }
+        l = is.na(new_rn)
+
+        x = x[!l, , drop = FALSE]
+        new_rn = new_rn[!l]
+
+        x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+            colMeans(x[ind, , drop = FALSE])
+        }))
+        return(x2)
+
+    } else if(is.numeric(x)) {
+        map = cola:::guess_id_mapping(names(x))
+        x2 = s
+        if(is.function(map)) {
+            names(x2) = map(names(x))
+        } else {
+            names(x2) = map[names(x)]
+        }
+        x2 = x2[!is.na(names(x2))]
+        x2 = tapply(x2, names(x2), mean)
+        return(x2)
+    } else {
+        map = cola:::guess_id_mapping(x)
+        if(is.function(map)) {
+            x2 = map(x)
+        } else {
+            x2 = map[x]
+        }
+        x2 = x2[!is.na(x2)]
+        x2 = unique(x2)
+        return(x2)
+    }
+}
+expr = convert_to_entrez_id(expr)
+```
+
+
+```{r}
+library(genefilter)
+tdf = rowttests(expr, factor(condition))
+```
+
+## ORA
+
+```{r}
+diff_gene = rownames(tdf)[abs(tdf$statistic) > 2]
+```
+
+```{r}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+res_ora = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+```
+
+
+```{r}
+dotplot(res_ora)
+```
+
+
+```{r}
+res_ora2 = res_ora
+res_ora2@result = res_ora@result[c(1, 3, 5, 7, 9), ]
+```
+
+## GSEA
+
+```{r}
+stat = tdf$statistic
+names(stat) = rownames(tdf)
+stat = sort(stat, decreasing = TRUE)
+res_gsea = gseGO(geneList = stat, ont = "BP", OrgDb = org.Hs.eg.db)
+```
+
+
+## simplifyEnrichment
+
+```{r}
+library(simplifyEnrichment)
+
+tb_ora = res_ora@result
+go_list = tb_ora$ID[tb_ora$p.adjust < 0.05]
+simplifyGO(go_list)
+```
+
+```{r}
+tb_gsea = res_gsea@result
+go_list = tb_gsea$ID[tb_gsea$p.adjust < 0.1]
+simplifyGO(go_list)
+```
+
+
+## compare multiple GSEA results
+
+```{r}
+load("sig_mat.RData")
+sig_mat_scaled = t(scale(t(sig_mat)))
+km = kmeans(sig_mat_scaled, centers = 3)$cluster
+
+library(ComplexHeatmap)
+Heatmap(sig_mat_scaled, row_split = km, 
+    show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE)
+```
+
+
+```{r}
+tb_list = list()
+for(i in 1:3) {
+    gene_list = rownames(sig_mat)[km == i]
+    res = enrichGO(gene_list, ont = "BP", OrgDb = org.Hs.eg.db, 
+        pvalueCutoff = 1, qvalueCutoff = 1) # these two are important!
+    tb_list[[i]] = res@result
+}
+names(tb_list) = c("km1", "km2", "km3")
+```
+
+```{r}
+simplifyGOFromMultipleLists(tb_list)
+```
+

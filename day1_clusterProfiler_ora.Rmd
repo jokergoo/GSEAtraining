@@ -1,0 +1,125 @@
+---
+title: "day1_clusterProfiler_ora"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+```{r}
+load("demo_ora.RData")
+```
+
+```{r, message=FALSE}
+library(clusterProfiler)
+```
+
+**You need to make sure the gene IDs are Entrez IDs.** The following function
+helps to automatically convert gene IDs to Entrez IDs. The input can be a vector
+of genes or a gene expression matrix.
+
+```{r}
+convert_to_entrez_id = function(x) {
+	if(is.matrix(x)) {
+		map = cola:::guess_id_mapping(rownames(x))
+		if(is.function(map)) {
+		    new_rn = map(rownames(x))
+		} else {
+		    new_rn = map[rownames(x)]
+		}
+		l = is.na(new_rn)
+
+		x = x[!l, , drop = FALSE]
+		new_rn = new_rn[!l]
+
+		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+			colMeans(x[ind, , drop = FALSE])
+		}))
+		return(x2)
+
+	} else if(is.numeric(x)) {
+		map = cola:::guess_id_mapping(names(x))
+		x2 = s
+		if(is.function(map)) {
+		    names(x2) = map(names(x))
+		} else {
+		    names(x2) = map[names(x)]
+		}
+		x2 = x2[!is.na(names(x2))]
+		x2 = tapply(x2, names(x2), mean)
+		return(x2)
+	} else {
+	    map = cola:::guess_id_mapping(x)
+	    if(is.function(map)) {
+	        x2 = map(x)
+	    } else {
+	        x2 = map[x]
+	    }
+	    x2 = x2[!is.na(x2)]
+	    x2 = unique(x2)
+	    return(x2)
+	}
+}
+```
+
+
+We convert the diff genes `diff_gene` to Entrez IDs. Note some genes are lost 
+due to the conversion.
+
+```{r}
+head(diff_gene)
+diff_gene = convert_to_entrez_id(diff_gene)
+head(diff_gene)
+length(diff_gene)
+```
+
+Next we perform ORA on different gene sets
+
+1. GO enrichment
+
+```{r, message = FALSE}
+library(org.Hs.eg.db)
+tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+head(tb)
+```
+
+2. KEGG enrichment
+
+
+```{r, message = FALSE}
+tb = enrichKEGG(gene = diff_gene, organism = "hsa")
+head(tb)
+```
+3. Reactome enrichment
+
+```{r}
+library(ReactomePA)
+tb = enrichPathway(gene = diff_gene)
+head(tb)
+```
+4. DO enrichment
+
+```{r}
+library(DOSE)
+tb = enrichDO(gene = diff_gene, ont = "DO")
+head(tb)
+```
+
+5. MSigDB enrichment
+
+There is no built-in function specific for MSigDB gene sets, but there is a universal function `enrichr()` which accepts
+manually-specified gene sets. The gene sets object is simply a two-column data frame:
+
+- the first column is the gene set ID
+- the second column is the gene ID
+
+```{r}
+library(msigdbr)
+gene_sets = msigdbr(category = "H")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+
+tb = enricher(gene = diff_gene, TERM2GENE = map)
+head(tb)
+```
+

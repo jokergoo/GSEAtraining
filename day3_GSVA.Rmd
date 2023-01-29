@@ -1,0 +1,80 @@
+---
+title: "day3_GSVA"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+We need an expression matrix as well as a collection of gene sets.
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+
+ln = strsplit(readLines("c2.symbols.gmt"), "\t")
+gs = lapply(ln, function(x) x[-(1:2)])
+names(gs) = sapply(ln, function(x) x[1])
+```
+
+Running **GSVA** analysis is simple. But note the gene IDs in `expr` should match the gene IDs in `gs`.
+
+The returned value `gs_mat` is a set-sample matrix.
+
+```{r}
+library(GSVA)
+gs_mat = gsva(expr, gs, verbose = FALSE)
+dim(gs_mat)
+```
+
+One good thing is you can visualize the set-level variations:
+
+
+```{r, message = FALSE}
+library(ComplexHeatmap)
+Heatmap(gs_mat, top_annotation = HeatmapAnnotation(cond = condition),
+  column_split = condition)
+```
+
+`gs_mat` can be used for downstream analysis.
+
+E.g. we can apply t-test on each row of `gs_mat` to test whether the geneset-level
+profile has difference between the two conditions.
+
+```{r, message=FALSE}
+library(genefilter)
+tdf = rowttests(gs_mat, factor(condition))
+tdf$fdr = p.adjust(tdf$p.value, "BH")
+```
+
+How many gene sets are significant?
+
+```{r}
+tdf[tdf$fdr < 0.05, ]
+```
+
+As a comparison, we also perform a normal GSEA analysis. We use the t-value as the gene-level score:
+
+```{r}
+s = rowttests(expr, factor(condition))[, "statistic"]
+names(s) = rownames(expr)
+```
+
+Here we also test to the c2 gene set collection, so we need to convert `gs` to the format **clusterProfiler** accepts:
+
+```{r, message = FALSE}
+map = data.frame(
+    gene_set = rep(names(gs), times = sapply(gs, length)),
+    gene = unlist(gs)
+)
+    
+library(clusterProfiler)
+tb = GSEA(geneList = sort(s, decreasing = TRUE), TERM2GENE = map)
+head(tb)
+```
+
+
+Actually comparing results from GSVA and GSEA, it is obvious that GSEA is better.
+
+

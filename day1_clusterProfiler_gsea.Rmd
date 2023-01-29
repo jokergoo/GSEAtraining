@@ -1,0 +1,48 @@
+---
+title: "day1_gsea_clusterProfiler"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+**Note in clusterProfiler, p-values are calculated by gene permutation!**
+
+```{r, message = FALSE}
+load("gene_diff_score.RData")
+gene_diff_score = sort(gene_diff_score, decreasing = TRUE)
+head(gene_diff_score)
+```
+
+```{r, message = FALSE}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+res = gseGO(geneList=gene_diff_score, OrgDb = org.Hs.eg.db, ont = "BP")
+res
+```
+
+`gseaplot()` draws the GSEA plot:
+
+
+```{r}
+gseaplot(res, geneSetID=1)
+```
+
+If using the MsigDB gene sets, similar as in `day1_clusterProfiler_ora.html`, we use the "H" gene sets (hallmark gene sets).
+
+```{r}
+library(msigdbr)
+gene_sets = msigdbr(category = "H")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+```
+
+This time, we use the function `GSEA()`:
+
+```{r, message = FALSE}
+tb = GSEA(geneList = gene_diff_score, TERM2GENE = map)
+head(tb)
+```
+
+More usages of **clusterProfiler**, please go to https://yulab-smu.top/biomedical-knowledge-mining-book/index.html.
+
+

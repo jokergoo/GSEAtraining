@@ -1,0 +1,401 @@
+---
+title: "day3_rGREAT"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+We first read the peaks as a data frame.
+
+```{r}
+bed = read.table("mm9_chipseq_peaks.bed")
+head(bed)
+dim(bed)
+```
+
+## Online GREAT analysis
+
+Use `submitGreatJob()` to submit the regions to GREAT web server. By default
+the species is human (hg19), so here we need to manually set the `species` argument.
+
+Entering the object `job` prints the summary of the job.
+
+```{r, message = FALSE}
+library(rGREAT)
+job = submitGreatJob(bed, species = "mm9")
+job
+```
+
+
+There are many ontologies integrated in GREAT. The total ontologies can be get by:
+
+```{r}
+availableOntologies(job)
+```
+
+By default three GO ontologies are used. More ontologies can be set via the `ontology` argument in `getEnrichmentTables()`.
+
+```{r}
+tbl = getEnrichmentTables(job)
+```
+
+`tb` is a list of three tables and each table contains enrichment results for a GO ontology:
+
+```{r}
+names(tbl)
+head(tbl[["GO Biological Process"]])
+```
+
+```{r}
+plotVolcano(job, ontology = "GO Biological Process")
+```
+
+The global region-gene association plots:
+
+```{r, fig.width = 10}
+plotRegionGeneAssociationGraphs(job)
+```
+
+```{r, fig.width = 10}
+plotRegionGeneAssociations(job, ontology = "GO Molecular Function",
+    term_id = "GO:0004984")
+```
+
+The table of the associations between genes and regions.
+
+```{r}
+getRegionGeneAssociations(job, ontology = "GO Molecular Function",
+    term_id = "GO:0004984")
+```
+
+Try the shiny app:
+
+```{r, eval = FALSE}
+shinyReport(job)
+```
+
+
+
+
+## Perform local GREAT with `great()`
+
+First let's load the **rGREAT** package and generate a random set of regions:
+
+```{r}
+library(rGREAT)
+set.seed(123)
+gr = randomRegions(nr = 1000, genome = "hg19")
+```
+
+The function `great()` is the core function to perform local GREAT analysis. You can either use built-in annotations or use self-provided annotations.
+
+### With defaultly supported annotation packages
+
+`great()` has integrated many annotation databases which cover many organisms.
+Users simply specify the name of gene set collection (via the second argument) and the source of TSS (via the third argument).
+
+```{r}
+res = great(gr, "MSigDB:H", "txdb:hg19")
+res
+```
+
+There are following supported gene set collections. The first category are GO gene sets. The gene sets data is from **GO.db** package.
+
+- `"GO:BP"`: Biological Process.
+- `"GO:CC"`: Cellular Component.
+- `"GO:MP"`: Molecular Function.
+
+The prefix `GO:` can be omitted when it is specified in `great()`.
+
+The second category of gene sets are from [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/). Note this is only for human. 
+If you want to use MSigDB for other organisms, check vignette ["Work with other organisms"](other-organisms.html).
+
+- `"msigdb:H"` Hallmark gene sets.
+- `"msigdb:C1"` Positional gene sets.
+- `"msigdb:C2"` Curated gene sets.
+- `"msigdb:C2:CGP"` C2 subcategory: chemical and genetic perturbations gene sets. 
+- `"msigdb:C2:CP"` C2 subcategory: canonical pathways gene sets. 
+- `"msigdb:C2:CP:KEGG"` C2 subcategory: KEGG subset of CP.
+- `"msigdb:C2:CP:PID"` C2 subcategory: PID subset of CP.
+- `"msigdb:C2:CP:REACTOME"` C2 subcategory: REACTOME subset of CP.
+- `"msigdb:C2:CP:WIKIPATHWAYS"` C2 subcategory: WIKIPATHWAYS subset of CP.
+- `"msigdb:C3"` Regulatory target gene sets.
+- `"msigdb:C3:MIR:MIRDB"` miRDB of microRNA targets gene sets.
+- `"msigdb:C3:MIR:MIR_LEGACY"` MIR_Legacy of MIRDB.
+- `"msigdb:C3:TFT:GTRD"` GTRD transcription factor targets gene sets.
+- `"msigdb:C3:TFT:TFT_LEGACY"` TFT_Legacy.
+- `"msigdb:C4"` Computational gene sets.
+- `"msigdb:C4:CGN"` C4 subcategory: cancer gene neighborhoods gene sets.
+- `"msigdb:C4:CM"` C4 subcategory: cancer modules gene sets.
+- `"msigdb:C5"` Ontology gene sets.
+- `"msigdb:C5:GO:BP"` C5 subcategory: BP subset.
+- `"msigdb:C5:GO:CC"` C5 subcategory: CC subset.
+- `"msigdb:C5:GO:MF"` C5 subcategory: MF subset.
+- `"msigdb:C5:HPO"` C5 subcategory: human phenotype ontology gene sets.
+- `"msigdb:C6"` Oncogenic signature gene sets.
+- `"msigdb:C7"` Immunologic signature gene sets.
+- `"msigdb:C7:IMMUNESIGDB"` ImmuneSigDB subset of C7.
+- `"msigdb:C7:VAX"` C7 subcategory: vaccine response gene sets.
+- `"msigdb:C8"` Cell type signature gene sets.
+
+The prefix `msigdb:` can be omitted when specified in `great()` and the name of a MSigDB can be used as case insensitive.
+
+**rGREAT** supports TSS from several sources. The value of argument `tss_source` should be encoded in a special format:
+
+- Name of a `TxDb.*` package, e.g. `TxDb.Hsapiens.UCSC.hg19.knownGene`. Supported packages are in `rGREAT:::BIOC_ANNO_PKGS$txdb`.
+- Genome version of the organism, e.g. "hg19". Then the corresponding TxDb package will be used.
+- In a format of `RefSeq:$genome` where `$genome` is the genome version of an organism. RefSeqSelect genes (directly retrieved from UCSC database) will be used.
+- In a format of `RefSeqCurated:$genome` where `$genome` is the genome version of an organism. RefSeqCurated subset (directly retrieved from UCSC database) will be used.
+- In a format of `RefSeqSelect:$genome` where `$genome` is the genome version of an organism. RefSeqSelect subset (directly retrieved from UCSC database) will be used.
+- In a format of `Gencode_v$version` where `$version` is Gencode version, such as 19 (for human) or M21 for mouse. Gencode protein coding genes will be used.
+- In a format of `GREAT:$genome`, where `$genome` can only be "mm9", "mm10", "hg19", "hg38". TSS from GREAT will be used. The data is downloaded from https://great-help.atlassian.net/wiki/spaces/GREAT/pages/655445/Genes.
+
+The difference of `RefSeqCurated` and `RefSeqSelect` is explained in https://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg38&g=refSeqComposite.
+
+Some examples are:
+
+```{r, eval = FALSE}
+great(gr, "GO:BP", "hg19")
+great(gr, "GO:BP", "TxDb.Hsapiens.UCSC.hg19.knownGene")
+great(gr, "GO:BP", "RefSeq:hg19")
+great(gr, "GO:BP", "GREAT:hg19")
+great(gr, "GO:BP", "Gencode_v19")
+```
+
+
+### Manually set gene sets
+
+If users have their own gene sets, the gene sets can be set as a named list of vectors where each vector corresponds to one gene set.
+Please note the genes in the gene sets **must be mostly in Entrez ID type** (Default TSSs are from TxDb packages and most TxDb packages use Entrez ID
+as primary ID, you can check the variable `rGREAT:::BIOC_ANNO_PKGS` to see the gene ID types in each TxDb package). In the following example, we use a gene set collection from [DSigDB](http://dsigdb.tanlab.org/DSigDBv1.0/collection.html).
+This collection (FDA approved kinase inhibitors) only contains 28 gene sets.
+
+Here `read_gmt()` is a simple function that reads a gmt file as a list of vectors, also performs gene ID conversion.
+
+
+```{r}
+gs = read_gmt(url("http://dsigdb.tanlab.org/Downloads/D2_LINCS.gmt"), 
+    from = "SYMBOL", to = "ENTREZ", orgdb = "org.Hs.eg.db")
+gs[1:2]
+great(gr, gs, "hg19")
+```
+
+### Manually set TSS
+
+Users may have their own set of genes/TSS, as in the following example:
+
+```{r}
+df = read.table(url("https://jokergoo.github.io/rGREAT_suppl/data/GREATv4.genes.hg19.tsv"))
+# note there must be a 'gene_id' column
+tss = GRanges(seqnames = df[, 2], ranges = IRanges(df[, 3], df[, 3]), 
+    strand = df[, 4], gene_id = df[, 5])
+head(tss)
+```
+
+In this case, users must manually generate an "extended TSS" by `extendTSS()` function. They should also explicitly specify the gene ID type
+in `extendTSS()` so that `great()` can correctly map to the genes in gene sets.
+
+In the example, IDs for genes in `tss` are symbols, thus, `gene_id_type` must be set to `"SYMBOL"` so that the correct gene ID type
+will be selected for internal gene sets.
+
+```{r}
+et = extendTSS(tss, genome = "hg19", gene_id_type = "SYMBOL")
+great(gr, "msigdb:h", extended_tss = et)
+```
+
+If gene ID type in `tss` is one of Ensembl/RefSeq/Entrez ID, `gene_id_type` argument can be omitted because the ID type can be automatically
+inferred from the format of the gene IDs, but it is always a good idea to explicitly specify it if the data is self-provided.
+
+### Manually set gene sets and TSS annotations
+
+If your organism is not defaultly supported, you can always use the `extendTSS()` to manually construct one. Note in GREAT algorithm, TSS are first
+extended by a rule (e.g. basal plus extension). `extendTSS()` accepts a `GRanges` object of gene or TSS and it returns a new `GRanges` object of extended TSS.
+
+In the following example, since I don't have data for the organism not defaultly supported by **rGREAT**. I simply use human data to demonstrate
+how to manually construct the extended TSS.
+
+
+There are two objects for `extendTSS()`: the gene (or the TSS) and the length of chromosomes. The gene object must have a meta column named "gene_id" which stores
+gene ID in a specific type (this ID type will be mapped to the genes in gene sets). The chromosome length object is a named vector. It controls the set of chromosomes to be used in the analysis and the border of chromosomes when extending TSSs.
+
+```{r}
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+gene = genes(TxDb.Hsapiens.UCSC.hg19.knownGene)
+gene = gene[seqnames(gene) %in% paste0("chr", c(1:22, "X", "Y"))]
+head(gene)
+gl = seqlengths(gene)[paste0("chr", c(1:22, "X", "Y"))]  # restrict to normal chromosomes
+head(gl)
+```
+
+Simply send `gene` and `gl` to `extendTSS()`:
+
+```{r}
+et = extendTSS(gene, gl)
+head(et)
+```
+
+We can also manually construct the gene sets object, which is simply a named list of vectors where each vector contains genes in a gene set.
+Here we directly use the object `gs` generated before which is a gene set collection from DSigDB.
+
+<p style='color:red'>Please note again, gene IDs in `gs` (the gene sets) should be the same as in `et` (the extended TSSs).</p>
+
+Now `gs` and `et` can be sent to `great()` to perform local GREAT with the annotation data you manually provided.
+
+```{r}
+great(gr, gene_sets = gs, extended_tss = et)
+```
+
+## Use BioMart genes and genesets
+
+**rGREAT** also supports GO gene sets for a huge number of organisms retrieved from [Ensembl BioMart](https://www.ensembl.org/info/data/biomart/index.html).
+A specific organism can be set with the `biomart_dataset` argument:
+
+
+```{r, echo = FALSE}
+if(!requireNamespace("BioMartGOGeneSets", quietly = TRUE)) {
+    suppressMessages(BiocManager::install("jokergoo/BioMartGOGeneSets", update = FALSE))
+}
+```
+
+```{r}
+# Giant panda
+gr_panda = randomRegionsFromBioMartGenome("amelanoleuca_gene_ensembl")
+great(gr_panda, "GO:BP", biomart_dataset = "amelanoleuca_gene_ensembl")
+```
+
+Note both TSS and gene sets are from BioMart. The value for gene sets (the second argument) can only be one of `"GO:BP"`, `"GO:CC"` and `"GO:MF"`.
+
+**rGREAT** now supports more than 600 organisms. The complete list can be found with `BioMartGOGeneSets::supportedOrganisms()`.
+
+For non-model organisms, the default chromosomes may include many small contigs. You can set the `background` argument to a vector of chromosomes that you want to include.
+
+## Set background regions
+
+In the online GREAT tool, if background regions are set, [it actually uses a different test for the enrichment analysis](https://great-help.atlassian.net/wiki/spaces/GREAT/pages/655456/Statistics#Statistics-ExplicitBackgroundSet).
+In GREAT, when background is set, input regions should be **exactly subset of background**. For example, let's say a background region list contains
+five regions: `[1, 10], [15, 23], [34, 38], [40, 49], [54, 63]`, input regions can only be a subset of the five regions, which
+means they can take `[15, 23], [40, 49]`, but it cannot take `[16, 20], [39, 51]`. In this setting, regions are taken
+as single units and Fisher's exact test is applied for calculating the enrichment (by testing number of regions in the 2x2 contigency table).
+
+This might be useful for certain cases, e.g., for a specific transcriptional
+factor (TF), we take the union of ChIP-seq peaks of this TF from all tissues
+as the background set, and only take peaks from one specific tisse as input
+region set, and we want to test the enrichment of TF peaks in the tissue
+compared to the "background". However, this "background definition" might not
+be the case as many other users may think. They might take "background" as a
+set of regions where they only want to perform GREAT (the Binomial method) in.
+E.g. they may want to exclude "gap regions / unsequenced regions" from the
+analysis because the null hypothesis of Binomial test is the input regions are
+uniformly distributed in the genome. Since the unsequenced regions will never
+be measured, they should be excluded from the analysis. Other examples are
+that the background can be set as regions showing similar GC contents or CpG
+density as the input regions.
+
+`great()` supports two arguments `background` and `exclude` for setting a
+proper background. If any one of the two is set, the input regions and the
+extended TSS regions are intersected to the background, and GREAT algorithm is
+only applied to the reduced regions.
+
+When whole genome is set as background, denote $N_1$ as the total number of
+input regions, $p_1$ as the fraction of genome that are overlapped to extended
+TSS of genes in a certain gene set, and $K_1$ as the number of regions that
+overlap to the gene set associated regions, then the enrichment test is based
+on the random variable $K_1$ which follows Binomial distribution $K_1 \sim B(p_1, N_1)$.
+
+Similarly, when background regions are set, denote $N_2$ as the total number
+of input regions that <u>overlap to backgroud</u>, $p_2$ as <u>the fraction of
+background</u> that are overlapped to extended TSS of genes in a certain gene
+set, and $K_2$ as the number of regions that overlap to the gene set associated
+regions <u>and also overlap to background</u>, then the enrichment test is based on
+the random variable $K_2$ which follows Binomial distribution $K_2 \sim B(p_2, N_2)$.
+
+In fact, the native hypergeometric method in GREAT can be approximated to the
+binomial method here. Nevertheless, the binomial method is more general and it has
+no restriction as the hypergeometric method where input regions must be
+perfect subsets of backgrounds.
+
+In the following example, `getGapFromUCSC()` can be used to retrieve gap regions from UCSC table browser.
+
+```{r, eval = FALSE}
+gap = getGapFromUCSC("hg19", paste0("chr", c(1:22, "X", "Y")))
+great(gr, "MSigDB:H", "hg19", exclude = gap)
+```
+
+**Note as the same as online GREAT, rGREAT by default excludes gap regions from the analysis.**
+
+Alternatively, `background` and `exclude` can also be set to a vector of chromosome names, then
+the whole selected chromosomes will be included/excluded from the analysis.
+
+```{r, eval = FALSE}
+great(gr, "GO:BP", background = paste0("chr", 1:22))
+great(gr, "GO:BP", exclude = c("chrX", "chrY"))
+```
+
+## Get enrichment table
+
+Simply use `getEnrichmentTable()` function. 
+
+```{r}
+tb = getEnrichmentTable(res)
+head(tb)
+```
+
+In `getEnrichmentTable()`, you can set argument `min_region_hits` to set
+the minimal number of input regions that hit a geneset-associated regions.
+Note the adjusted p-values will be recalculated in the table.
+
+There are also columns for hypergeometric test on the numbers of genes, the same
+as in the original GREAT method.
+
+<p style='color:red'>There is a new column "mean_tss_dist" in the result table which is the mean absolute distance
+of input regions to TSS of genes in a gene set. Please note with larger
+distance to TSS, the more we need to be careful with the reliability of the
+associations between input regions to genes.</p>
+
+## Make volcano plot
+
+In differential gene expression analysis, volcano plot is used to visualize relations between log2 fold change and (adjusted) p-values.
+Similarly, we can also use volcano plot to visualize relations between fold enrichment and (adjusted) p-values for the enrichment analysis. 
+The plot is made by the function `plotVolcano()`:
+
+```{r, fig.width = 6, fig.height = 6}
+plotVolcano(res)
+```
+
+As the enrichment analysis basically only looks for over-representations, it is actually half volcano.
+
+
+## Get region-gene associations
+
+`plotRegionGeneAssociations()` generates three plots similar as those by
+online GREAT. `getRegionGeneAssociations()` returns a `GRanges` object containing
+associations between regions and genes.
+
+```{r, fig.width = 10, fig.height = 10/3, fig.align = 'center'}
+plotRegionGeneAssociations(res)
+getRegionGeneAssociations(res)
+```
+
+Being different from the online GREAT, `getRegionGeneAssociations()` on the local GREAT object calculates
+the distance to TSS based on the borders of the input regions. The argument `by_middle_points` can 
+be set to `TRUE` to let the distance be based on the middle points of input regions.
+
+Please note the two meta columns are in formats of `CharacterList`
+and `IntegerList` because a region may associate to multiple genes.
+
+
+Of course you can set a specific geneset term by argument `term_id`.
+
+```{r, fig.width = 10, fig.height = 10/3, fig.align = 'center'}
+plotRegionGeneAssociations(res, term_id = "HALLMARK_APOPTOSIS")
+getRegionGeneAssociations(res, term_id = "HALLMARK_APOPTOSIS")
+```
+
+## The Shiny application
+
+`shinyReport()` creates a Shiny application to view the complete results:
+
+```{r, eval = FALSE}
+shinyReport(res)
+```

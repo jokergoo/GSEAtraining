@@ -1,0 +1,154 @@
+---
+title: "day1_gsea_exercise"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+1. read and try to understand the implementation of GSEA algorithm (`day1_gsea_example.html`)
+
+2. Use your own dataset or the p53 dataset (or pick one from https://www.gsea-msigdb.org/gsea/datasets.jsp), use gene sets in category "C5" and subcategory "GO:BP", 
+run GSEA with sample permutation and gene permutation (use the official GSEA software). Compare the results.
+
+3. Use **clusterProfiler**, set gene-level score to t-value, log2fold change and -log10(p-value) and compare the results (`day1_clusterProfiler_gsea.html`, `day1_compare_ORA_GSEA.html`). Remember to also plot the distribution of the gene-level scores to see their differences (simply use `plot(sort(s))`.
+
+Note, to calculate t-values or p-values from the matrix, you can use `apply()` and `t.test()` function:
+
+```{r, eval = FALSE}
+tvalue = apply(mat, 1, function(x) {
+    x1  # x1 is the value in condition 1
+    x2  # x2 is the value in condition 2
+    t = t.test(x1, x2)
+    t$statistic
+})
+pvalue = apply(mat, 1, function(x) {
+    x1  # x1 is the value in condition 1
+    x2  # x2 is the value in condition 2
+    t = t.test(x1, x2)
+    t$p.value
+})
+log2fc = apply(mat, 1, function(x) {
+    x1  # x1 is the value in condition 1
+    x2  # x2 is the value in condition 2
+    log2(mean(x1)/mean(x2))
+})
+```
+
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+```
+
+```{r}
+convert_to_entrez_id = function(x) {
+	if(is.matrix(x)) {
+		map = cola:::guess_id_mapping(rownames(x))
+		if(is.function(map)) {
+		    new_rn = map(rownames(x))
+		} else {
+		    new_rn = map[rownames(x)]
+		}
+		l = is.na(new_rn)
+
+		x = x[!l, , drop = FALSE]
+		new_rn = new_rn[!l]
+
+		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+			colMeans(x[ind, , drop = FALSE])
+		}))
+		return(x2)
+
+	} else if(is.numeric(x)) {
+		map = cola:::guess_id_mapping(names(x))
+		x2 = s
+		if(is.function(map)) {
+		    names(x2) = map(names(x))
+		} else {
+		    names(x2) = map[names(x)]
+		}
+		x2 = x2[!is.na(names(x2))]
+		x2 = tapply(x2, names(x2), mean)
+		return(x2)
+	} else {
+	    map = cola:::guess_id_mapping(x)
+	    if(is.function(map)) {
+	        x2 = map(x)
+	    } else {
+	        x2 = map[x]
+	    }
+	    x2 = x2[!is.na(x2)]
+	    x2 = unique(x2)
+	    return(x2)
+	}
+}
+```
+
+```{r}
+expr = convert_to_entrez_id(expr)
+```
+
+```{r}
+library(genefilter)
+tdf = rowttests(expr, factor(condition))  # the second must be a "factor"
+```
+
+```{r}
+m1 = expr[, condition == "WT"]
+m2 = expr[, condition == "MUT"]
+
+log2fc = log2( rowMeans(m2)/rowMeans(m1) )
+tdf$log2fc = log2fc
+
+tdf$log_p = -log10(tdf$p.value)*sign(tdf$log2fc)
+```
+
+
+```{r}
+#plot(tdf$statistic, tdf$log2fc)
+
+plot(tdf$statistic, tdf$log_p)
+```
+
+
+```{r}
+s = tdf$statistic
+names(s) = rownames(tdf)   # s must have names (gene IDs)
+s = sort(s, decreasing = TRUE)  # s must be pre-sorted
+tb_gsea = gseGO(geneList = s, 
+                OrgDb = org.Hs.eg.db,
+                ont   = "BP",
+                pAdjustMethod = "BH")
+tb_gsea_tvalue = as.data.frame(tb_gsea)
+```
+
+```{r}
+s = tdf$log2fc
+names(s) = rownames(tdf)   # s must have names (gene IDs)
+s = sort(s, decreasing = TRUE)  # s must be pre-sorted
+tb_gsea = gseGO(geneList = s, 
+                OrgDb = org.Hs.eg.db,
+                ont   = "BP",
+                pAdjustMethod = "BH")
+tb_gsea_log2fc = as.data.frame(tb_gsea)
+
+
+s = tdf$log_p
+names(s) = rownames(tdf)   # s must have names (gene IDs)
+s = sort(s, decreasing = TRUE)  # s must be pre-sorted
+tb_gsea = gseGO(geneList = s, 
+                OrgDb = org.Hs.eg.db,
+                ont   = "BP",
+                pAdjustMethod = "BH")
+tb_gsea_log_p = as.data.frame(tb_gsea)
+```
+
+
+```{r}
+plot(euler(list(t_value = tb_gsea_tvalue$ID, 
+                log2fc = tb_gsea_log2fc$ID, 
+                "-log10_p" = tb_gsea_log_p$ID)), 
+    quantities = TRUE)
+```

@@ -1,0 +1,692 @@
+---
+title: "day2_tiny_GSEA_framework"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE)
+```
+
+
+```{r}
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+condition = factor(condition, levels = c("WT", "MUT"))
+
+expr = read.gct("P53_collapsed_symbols.gct")
+```
+
+
+The process of (univariate) GSEA analysis:
+
+<img width="1237" alt="image" src="https://user-images.githubusercontent.com/449218/166109497-10c2ab00-8ccd-42e3-a0a0-a06f082fbc2d.png">
+
+So basically, the calculation of gene-level statistics and set-level statistics can be separated.
+
+We will implement the three independent parts: $f()$, $f'()$ and $g()$.
+
+We first implement the function that calculates gene-level statistics. To make things simple, we assume the matrix is from a two-condition comparison.
+
+
+- input: an expresion matrix (with condition labels)
+- output: a vector of gene-level scores
+
+- method: (t-value, log2fc, ...)
+
+
+```{r}
+# implement t-values as gene-level stat
+gene_level = function(mat, condition) {
+  
+  tdf = genefilter:rowttests(mat, factor(condition))
+  stat = tdf$statistic
+  return(stat)
+}
+```
+
+```{r}
+library(matrixStats)
+library(genefilter)
+
+# -condition to be a factor
+gene_level = function(mat, condition, method = "tvalue") {
+        
+    le = levels(condition)
+    l_group1 = condition == le[1]
+    l_group2 = !l_group1
+    
+    mat1 = mat[, l_group1, drop = FALSE]  # sub-matrix for condition 1
+    mat2 = mat[, l_group2, drop = FALSE]  # sub-matrix for condition 2
+    
+    if(method == "log2fc") {
+        stat = log2(rowMeans(mat1)/rowMeans(mat2))
+    } else if(method == "s2n") {
+        stat = (rowMeans(mat1) - rowMeans(mat2))/(rowSds(mat1) + rowSds(mat2))
+    } else if(method == "tvalue") {
+        stat = (rowMeans(mat1) - rowMeans(mat2))/sqrt(rowVars(mat1)/ncol(mat1) + rowVars((mat2)/ncol(mat2)))
+    } else if(method == "sam") {
+        s = sqrt(rowVars(mat1)/ncol(mat1) + rowVars((mat2)/ncol(mat2)))
+        stat = (rowMeans(mat1) - rowMeans(mat2))/(s + quantile(s, 0.1))
+    } else if(method == "ttest") {
+        stat = rowttests(mat, factor(condition))$p.value
+    } else {
+        stop("method is not supported.")
+    }
+    
+    return(stat)
+}
+```
+
+```{r}
+s = gene_level(expr, condition, method = "s2n")
+```
+
+
+
+The transformation on gene-level values can actually be integrated as a part of the calculation of gene-level values, i.e. $f'(f())$ can also be thought
+as a gene-level statistic.
+
+if the gene-level stat is p-values
+we need to set a cutoff of p to convert to 1/0
+
+binarize()
+input: is the origial gene-level stat (e.g. p-value)
+ouput: the values are 1/0
+
+binarize = function(x) ifelse(x < 0.05, 1, 0)
+
+if the gene-level stat is log2fc
+
+binarize = function(x) ifelse(abs(x) > 1, 1, 0)
+
+```{r}
+gene_level = function(mat, condition, method = "tvalue", transform = "none", 
+  binarize = function(x) x) {
+        
+    le = levels(condition)
+    l_group1 = condition == le[1]
+    l_group2 = !l_group1
+    
+    mat1 = mat[, l_group1, drop = FALSE]
+    mat2 = mat[, l_group2, drop = FALSE]
+    
+    if(method == "log2fc") {
+        stat = log2(rowMeans(mat1)/rowMeans(mat2))
+    } else if(method == "s2n") {
+        stat = (rowMeans(mat1) - rowMeans(mat2))/(rowSds(mat1) + rowSds(mat2))
+    } else if(method == "tvalue") {
+        stat = (rowMeans(mat1) - rowMeans(mat2))/sqrt(rowVars(mat1)/ncol(mat1) + rowVars((mat2)/ncol(mat2)))
+    } else if(method == "sam") {
+        s = sqrt(rowVars(mat1)/ncol(mat1) + rowVars((mat2)/ncol(mat2)))
+        stat = (rowMeans(mat1) - rowMeans(mat2))/(s + quantile(s, 0.1))
+    } else if(method == "ttest") {
+        stat = rowttests(mat, factor(condition))$p.value
+    } else {
+        stop("method is not supported.")
+    }
+    
+    if(transform == "none") {
+        
+    } else if(transform == "abs") {
+        stat = abs(stat)
+    } else if(transform == "square") {
+        stat = stat^2
+    } else if(transform == "binary") {
+        stat = binarize(stat)
+    } else {
+        stop("method is not supported.")
+    }
+    
+    return(stat)
+}
+```
+
+Let's test `gene_level()`. Here we still use the p53 dataset which is from the GSEA original paper.
+
+
+Let's check the gene-level values:
+
+```{r}
+methods = c("log2fc", "s2n", "tvalue", "sam")
+lt = lapply(methods, function(x) gene_level(expr, condition, method = x))
+names(lt) = methods
+pairs(lt)
+```
+
+Also we can check number of differential genes (gene level: `ttest` + transform: `binary`).
+Note a better way is to filter by FDR, but for simplicity, we use p-values directly.
+
+```{r}
+s = gene_level(expr, condition, method = "ttest", transform = "binary", 
+    binarize = function(x) ifelse(x < 0.05, 1, 0))
+table(s)
+```
+
+If method is set to `log2fc`, then the differential genes can be selected by setting a cutoff for log2 fold change.
+
+
+```{r}
+s = gene_level(expr, condition, method = "log2fc", transform = "binary", 
+    binarize = function(x) ifelse(abs(x) > 1, 1, 0))
+table(s)
+```
+
+Implementing `gene_level()` is actually simply.
+
+Next we implement the calculation of set-level statistics. A nature design for the set-level function is to let it accept a vector of gene-level statistics and a gene set represented as a vector of genes, like follows:
+
+```{r, eval = FALSE}
+set_fun = function(gene_stat, geneset) {
+    s = gene_stat[geneset]
+    mean(s)
+}
+```
+
+However, we need to make sure all genes in `geneset` are also in `gene_stat`. A safer way
+is to test which genes in `gene_stat` are also in `geneset`:
+
+```{r, eval = FALSE}
+set_fun = function(gene_stat, geneset) {
+    s = gene_stat[ names(gene_stat) %in% geneset ]
+    mean(s)
+}
+```
+
+
+
+However, recall the set-level can also be calculated based on genes outside of the gene set. Thus the two arguments in `set_level()` are a vector of gene-level statistics for all genes and a logical vector which shows whether genes in the current gene set. In this setting, we can know both which genes are in the set and which genes are not in the set.
+
+# before `geneset` is a vector of gene IDs
+# now `l_set`: a logical vector, which has the same length of `gene_stat`, 
+   if the value is TRUE, it means the gene is in the set, if it is FALSE, the gene is NOT in the set
+
+```{r}
+set_level = function(gene_stat, l_set, method = "mean") {
+    if(!any(l_set)) {
+        return(NA)
+    }
+    
+    if(method == "mean") {
+        stat = mean(gene_stat[l_set])
+    } else if(method == "sum") {
+        stat = sum(gene_stat[l_set])      
+    } else if(method == "median") {
+        stat = median(gene_stat[l_set])
+    } else if(method == "maxmean") {
+        s = gene_stat[l_set]
+        s1 = mean(s[s > 0]) # s1 is positive
+        s2 = mean(s[s < 0])  # s2 is negative
+        stat = ifelse(s1 > abs(s2), s1, s2)
+    } else if(method == "ks") {
+        # order gene_stat
+        od = order(gene_stat, decreasing = TRUE)
+        gene_stat = gene_stat[od]
+        l_set = l_set[od]
+        
+        s_set = abs(gene_stat)
+        s_set[!l_set] = 0
+        f1 = cumsum(s_set)/sum(s_set)
+    
+        l_other = !l_set
+        f2 = cumsum(l_other)/sum(l_other)
+    
+        stat = max(f1 - f2)
+    } else if(method == "wilcox") {
+        stat = wilcox.test(gene_stat[l_set], gene_stat[!l_set])$statistic
+    } else if(method == "chisq") {
+        # should on work with binary gene-level statistics
+        stat = chisq.test(factor(gene_stat), factor(as.numeric(l_set)))$statistic
+    } else {
+        stop("method is not supported.")
+    }
+    
+    return(stat)
+}
+```
+
+Let's check `set_level()`:
+
+input of `set_level()`:
+
+1. a gene-level scores
+2. a logical vector which shows whether the genes are in a set
+
+```{r}
+gene_stat = gene_level(expr, condition)
+
+ln = strsplit(readLines("c2.symbols.gmt"), "\t")
+gs = lapply(ln, function(x) x[-(1:2)])
+names(gs) = sapply(ln, function(x) x[1])
+
+geneset = gs[["p53hypoxiaPathway"]]
+l_set = rownames(expr) %in% geneset
+set_level(gene_stat, l_set)
+set_level(gene_stat, l_set, method = "ks")
+```
+
+Now we can wrap `gene_level()` and `set_level()` into a single function `gsea_tiny()` which accepts the expression and one gene set as input, 
+and it returns the set-level score.
+
+
+gsea_tiny():
+
+-  expression matrix (condition labels)
+-  a gene set
+
+output: a set-level statistic
+
+gsea_tiny() [  gene_level() + set_level() ]
+
+```{r}
+gsea_tiny = function(mat, condition, 
+    gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
+    set_level_method = "mean", geneset) {
+    
+    gene_stat = gene_level(mat, condition, method = gene_level_method, 
+        transform = transform, binarize = binarize)
+    
+    l_set = rownames(mat) %in% geneset
+    
+    set_stat = set_level(gene_stat, l_set, method = set_level_method)
+    
+    return(set_stat)
+}
+```
+
+We apply `gsea_tiny()` to the p53 dataset.
+
+```{r}
+gsea_tiny(expr, condition, geneset = geneset)
+```
+
+We use `wilcox.test()` to calculate the Wilcoxon statistic. Note this function also does a lot of extra calculations. We can implement a function which "just" calculates the Wilcoxon statistic but do nothing else: 
+
+The formula is from Wikipedia (https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test).
+
+Note, to make `wilcox_stat()` faster, we only use maximal 100 data points. It is only
+for demonstration purpose, you should not use it in real applications.
+
+
+"outer" calculation
+
+x, y
+every value in x to every value in y
+
+if length(x) is n, length(y) is m
+
+n*m
+
+`outer()`
+
+m = outer(x, y, ">")
+
+```{r}
+wilcox_stat = function(x1, x2) {
+  if(length(x1) > 100) {
+    x1 = sample(x1, 100)
+  }
+  if(length(x2) > 100) {
+    x2 = sample(x2, 100)
+  }
+  sum(outer(x1, x2, ">"))
+}
+```
+
+Similarly, we implement a new function which only calculates chi-square statistic: 
+
+```{r}
+# x1: a logical vector or a binary vector
+# x2: a logical vector or a binary vector
+chisq_stat = function(x1, x2) {
+    n11 = sum(x1 & x2)
+    n10 = sum(x1)
+    n20 = sum(!x1)
+    n01 = sum(x2)
+    n02 = sum(!x2)
+    n = length(x1)
+
+    n12 = n10 - n11
+    n21 = n01 - n11
+    n22 = n20 - n21
+
+    p10 = n10/n
+    p20 = n20/n
+    p01 = n01/n
+    p02 = n02/n
+
+    e11 = n*p10*p01
+    e12 = n*p10*p02
+    e21 = n*p20*p01
+    e22 = n*p20*p02
+
+    stat = (n11 - e11)^2/e11 +
+           (n12 - e12)^2/e12 +
+           (n21 - e21)^2/e21 +
+           (n22 - e22)^2/e22
+    return(stat)
+}
+```
+
+and we change `set_level()` accordingly:
+
+```{r}
+set_level = function(gene_stat, l_set, method = "mean") {
+    if(!any(l_set)) {
+        return(NA)
+    }
+    
+    if(method == "mean") {
+        stat = mean(gene_stat[l_set])
+    } else if(method == "sum") {
+        stat = sum(gene_stat[l_set])      
+    } else if(method == "median") {
+        stat = median(gene_stat[l_set])
+    } else if(method == "maxmean") {
+        s = gene_stat[l_set]
+        s1 = mean(s[s > 0])
+        s2 = mean(s[s < 0])
+        stat = ifelse(s1 > abs(s2), s1, s2)
+    } else if(method == "ks") {
+        # order gene_stat
+        od = order(gene_stat, decreasing = TRUE)
+        gene_stat = gene_stat[od]
+        l_set = l_set[od]
+        
+        s_set = abs(gene_stat)
+        s_set[!l_set] = 0
+        f1 = cumsum(s_set)/sum(s_set)
+    
+        l_other = !l_set
+        f2 = cumsum(l_other)/sum(l_other)
+    
+        stat = max(f1 - f2)
+    } else if(method == "wilcox") {
+        stat = wilcox_stat(gene_stat[l_set], gene_stat[!l_set])
+    } else if(method == "chisq") {
+        # should on work with binary gene-level statistics
+        stat = chisq_stat(gene_stat, l_set)
+    } else {
+        stop("method is not supported.")
+    }
+    
+    return(stat)
+}
+```
+
+Next we will adjust `gsea_tiny()` to let it work for multiple gene sets and support random permutation for p-value calculation.
+
+To let is support a list of gene sets, simply change the format of `geneset` variable.
+
+
+## geneset to be a list of gene sets
+
+```{r}
+# geneset: a list of vectors (gene IDs)
+gsea_tiny = function(mat, condition, 
+    gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
+    gene_stat, set_level_method = "mean", geneset) {
+    
+    gene_stat = gene_level(mat, condition, method = gene_level_method, 
+        transform = transform, binarize = binarize)
+    
+    set_stat = sapply(geneset, function(set) {
+        l_set = rownames(mat) %in% set
+        
+        set_level(gene_stat, l_set, set_level_method)
+    })
+    
+    return(set_stat)
+}
+```
+
+Check the new version of `gsea_tiny()`:
+
+```{r}
+ss = gsea_tiny(expr, condition, geneset = gs)
+head(ss)
+```
+
+Now with `gsea_tiny()`, we can also generate the null distribution of the set-level statistics, just by
+generating random matrices.
+
+```{r, eval = FALSE}
+# sample permutation
+ss_random = list()
+for(i in 1:1000) {
+    ss_random[[i]] = gsea_tiny(mat, sample(condition), geneset = gs)
+}
+
+# or gene permutation
+for(i in 1:1000) {
+    mat2 = mat
+    rownames(mat2) = sample(rownames(mat))
+    ss_random[[i]] = gsea_tiny(mat2, condition, geneset = gs)
+}
+```
+
+A better design is to integrate permutation procedures inside `gsea_tiny()`. We first integrate sample permutation:
+
+```{r}
+gsea_tiny = function(mat, condition, 
+    gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
+    gene_stat, set_level_method = "mean", geneset,
+    nperm = 1000) {
+    
+    gene_stat = gene_level(mat, condition, method = gene_level_method, 
+        transform = transform, binarize = binarize)
+    
+    set_stat = sapply(geneset, function(set) {
+        l_set = rownames(mat) %in% set
+        
+        set_level(gene_stat, l_set, set_level_method)
+    })
+    
+    ## null distribution 
+    set_stat_random = list()
+    
+    for(i in seq_len(nperm)) {
+        condition2 = sample(condition)
+        gene_stat = gene_level(mat, condition2, method = gene_level_method, 
+            transform = transform, binarize = binarize)
+        
+        set_stat_random[[i]] = sapply(geneset, function(set) {
+            l_set = rownames(mat) %in% set
+            
+            set_level(gene_stat, l_set, set_level_method)
+        })
+        
+        if(i %% 100 == 0) {
+            message(i, " permutations done.")
+        }
+    }
+    
+    set_stat_random = do.call(cbind, set_stat_random)
+    
+    n_set = length(geneset)
+    p = numeric(n_set)
+    for(i in seq_len(n_set)) {
+        p[i] = sum(set_stat_random[i, ] >= set_stat[i])/nperm
+    }
+    
+    # the function returns a data frame
+    df = data.frame(stat = set_stat,
+                    size = sapply(geneset, length), 
+                    p.value = p)
+    df$fdr = p.adjust(p, "BH")
+    
+    return(df)
+}
+```
+
+Let's have a try. It is actually quite slow to run 1000 permutations.
+
+```{r, eval = FALSE}
+df = gsea_tiny(expr, condition, geneset = gs)
+```
+
+This is the basic procedures of developing new R functions. First we make sure the functions are working, next we optimize the functions to let them running faster or use less memory.
+
+`gsea_tiny()` running with 100 permutations only needs several seconds.
+
+```{r}
+df = gsea_tiny(expr, condition, geneset = gs, nperm = 100)
+```
+
+The package **profvis** provides an easy to for profiling.
+
+```{r, eval = FALSE}
+library(profvis)
+profvis(gsea_tiny(expr, condition, geneset = gs, nperm = 100))
+```
+
+We can see the process of `%in%` uses quite a lot of running time.
+
+we can first calculate the relations of genes and sets and later they can be repeatedly used.
+
+```{r}
+gsea_tiny = function(mat, condition, 
+    gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
+    gene_stat, set_level_method = "mean", geneset,
+    nperm = 1000) {
+    
+    gene_stat = gene_level(mat, condition, method = gene_level_method, 
+        transform = transform, binarize = binarize)
+    
+    # now this only needs to be calculated once
+    l_set_list = lapply(geneset, function(set) {
+        rownames(mat) %in% set
+    })
+    
+    set_stat = sapply(l_set_list, function(l_set) {
+        set_level(gene_stat, l_set, set_level_method)
+    })
+    
+    ## null distribution 
+    set_stat_random = list()
+    
+    for(i in seq_len(nperm)) {
+        condition2 = sample(condition)
+        gene_stat_random = gene_level(mat, condition2, method = gene_level_method, 
+            transform = transform, binarize = binarize)
+        
+        # here we directly use l_set_list
+        set_stat_random[[i]] = sapply(l_set_list, function(l_set) {
+            set_level(gene_stat_random, l_set, set_level_method)
+        })
+        
+        if(i %% 100 == 0) {
+            message(i, " permutations done.")
+        }
+    }
+    
+    set_stat_random = do.call(cbind, set_stat_random)
+    
+    n_set = length(geneset)
+    p = numeric(n_set)
+    for(i in seq_len(n_set)) {
+        p[i] = sum(set_stat_random[i, ] >= set_stat[i])/nperm
+    }
+    
+    df = data.frame(stat = set_stat,
+                    size = sapply(geneset, length), 
+                    p.value = p)
+    df$fdr = p.adjust(p, "BH")
+    
+    return(df)
+}
+```
+
+Now it is faster for 1000 permutations:
+
+```{r}
+df = gsea_tiny(expr, condition, geneset = gs)
+```
+
+To support gene permutation, we only need to permute the gene-level statistics calculated from the original matrix.
+Note we also move position of `geneset` argument to the start of the argument list because it is a must-set argument.
+
+```{r}
+gsea_tiny = function(mat, condition, geneset,
+    gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
+    gene_stat, set_level_method = "mean",
+    nperm = 1000, perm_type = "sample") {
+    
+    gene_stat = gene_level(mat, condition, method = gene_level_method, 
+        transform = transform, binarize = binarize)
+    l_set_list = lapply(geneset, function(set) {
+        rownames(mat) %in% set
+    })
+    
+    set_stat = sapply(l_set_list, function(l_set) {
+        set_level(gene_stat, l_set, set_level_method)
+    })
+    
+    ## null distribution 
+    set_stat_random = list()
+    
+    for(i in seq_len(nperm)) {
+        
+        if(perm_type == "sample") {
+            condition2 = sample(condition)
+            gene_stat_random = gene_level(mat, condition2, method = gene_level_method, 
+                transform = transform, binarize = binarize)
+            
+            set_stat_random[[i]] = sapply(l_set_list, function(l_set) {
+                set_level(gene_stat_random, l_set, set_level_method)
+            })
+        } else if(perm_type == "gene") {
+            gene_stat_random = sample(gene_stat)
+            
+            set_stat_random[[i]] = sapply(l_set_list, function(l_set) {
+                set_level(gene_stat_random, l_set, set_level_method)
+            })
+        } else {
+            stop("wrong permutation type.")
+        }
+        
+        if(i %% 100 == 0) {
+            message(i, " permutations done.")
+        }
+    }
+    
+    set_stat_random = do.call(cbind, set_stat_random)
+    
+    n_set = length(geneset)
+    p = numeric(n_set)
+    for(i in seq_len(n_set)) {
+        p[i] = sum(set_stat_random[i, ] >= set_stat[i])/nperm
+    }
+    
+    df = data.frame(stat = set_stat,
+                    size = sapply(geneset, length), 
+                    p.value = p)
+    df$fdr = p.adjust(p, "BH")
+    
+    return(df)
+}
+```
+
+Let's check:
+
+```{r}
+set.seed(123)
+df1 = gsea_tiny(expr, condition, geneset = gs, perm_type = "sample")
+df2 = gsea_tiny(expr, condition, geneset = gs, perm_type = "gene")
+```
+
+```{r}
+df1 = df1[order(df1$p.value), ]
+df2 = df2[order(df2$p.value), ]
+head(df1)
+head(df2)
+```
+
+Note, above settings can only detect the up-regulated gene sets.
+
+Great! If we think each combination of gene-level method, gene-level transformation and set-level method is _a GSEA method_, then our `gsea_tiny()` actually already support many GSEA methods! The whole functionality only contains ~180 lines of code (https://gist.github.com/jokergoo/e8fff4a57ec59efc694b9e730da22b9f).
+
+
+<img width="600" alt="image" src="https://user-images.githubusercontent.com/449218/166120826-7122bf37-d500-45ca-a2a0-dede9173dce7.png">

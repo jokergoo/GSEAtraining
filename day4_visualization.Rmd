@@ -1,0 +1,286 @@
+---
+title: "day4_visualization"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, fig.height = 8)
+```
+
+We first demonstrate the visualization on ORA analysis.
+
+```{r}
+load("demo_ora.RData")
+```
+
+The following function converts gene symbols to Entrez IDs.
+
+```{r}
+convert_to_entrez_id = function(x) {
+	if(is.matrix(x)) {
+		map = cola:::guess_id_mapping(rownames(x))
+		if(is.function(map)) {
+		    new_rn = map(rownames(x))
+		} else {
+		    new_rn = map[rownames(x)]
+		}
+		l = is.na(new_rn)
+
+		x = x[!l, , drop = FALSE]
+		new_rn = new_rn[!l]
+
+		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+			colMeans(x[ind, , drop = FALSE])
+		}))
+		return(x2)
+
+	} else if(is.numeric(x)) {
+		map = cola:::guess_id_mapping(names(x))
+		x2 = s
+		if(is.function(map)) {
+		    names(x2) = map(names(x))
+		} else {
+		    names(x2) = map[names(x)]
+		}
+		x2 = x2[!is.na(names(x2))]
+		x2 = tapply(x2, names(x2), mean)
+		return(x2)
+	} else {
+	    map = cola:::guess_id_mapping(x)
+	    if(is.function(map)) {
+	        x2 = map(x)
+	    } else {
+	        x2 = map[x]
+	    }
+	    x2 = x2[!is.na(x2)]
+	    x2 = unique(x2)
+	    return(x2)
+	}
+}
+diff_gene = convert_to_entrez_id(diff_gene)
+```
+
+We perform ORA analysis with **clusterProfiler**. Note the function `enrichGO()` returns a `enrichResult` object
+and its slot ("`result`) contains the result table. Here we also extract the result table for future use.
+
+Also note by default `enrichGO()` only returns significant results, so here we set `pvalueCutoff = 1` to let
+`enrichGO()` to return all results (both significant and insignificant).
+
+```{r}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+res = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db, pvalueCutoff = 1)
+tb = res@result
+```
+
+How many signfiicant GO terms (FDR < 0.05)?
+
+```{r}
+sum(tb$p.adjust < 0.05)
+```
+
+First we make barplot for the significant terms:
+
+```{r}
+library(enrichplot)
+barplot(res, showCategory = 20)
+```
+
+
+In the result table, there are fractions of geneset gene in the diff gene list and fractions of geneset genes in the background:
+
+```{r}
+head(tb)
+```
+
+We can calculate a "log2 fold change" which measures the relative value of fractions of geneset genes in the diff list and in the background.
+
+The fraction is represented as strings "10/20", so we need to parse them into R expression:
+
+```{r}
+gene_ratio = sapply(tb$GeneRatio, function(x) eval(parse(text = x)))
+bg_ratio = sapply(tb$BgRatio, function(x) eval(parse(text = x)))
+log2fc = log2(gene_ratio/bg_ratio)
+```
+
+It might be interesting to see the distribution of log2 fold change.
+
+```{r}
+hist(log2fc)
+```
+
+For the ease of use, `log2fc` is appended to both `res@result` and `tb`:
+
+```{r}
+res@result$log2fc = log2fc
+tb$log2fc = log2fc
+```
+
+Now we can set `log2fc` as values on x-axis in the barplot:
+
+```{r}
+barplot(res, showCategory = 20, x = "log2fc")
+```
+
+Making dot plot is almost the same as barplot. In dot plot, gene sets are by default reordered by values on x-axis.
+
+Note x-axis starts from the minimal on x-axis.
+
+```{r}
+dotplot(res, showCategory = 20)
+dotplot(res, showCategory = 20, x = "log2fc")
+```
+
+Network visualization. Note by default it only shows top 5 gene sets.
+
+```{r}
+cnetplot(res)
+```
+
+
+Heatmap-like plot to visualize gene-geneset relations:
+
+```{r, fig.width=10}
+heatplot(res, showCategory = 10)
+```
+
+Tree-like visualization. We first need to calculate pairwise similarity between GO terms (by default Jaccard coefficient).
+
+```{r}
+res = pairwise_termsim(res)
+treeplot(res)
+```
+
+Enrichment map visualization.
+
+```{r, fig.width=10}
+emapplot(res)
+```
+
+UpSet plot.
+
+```{r, fig.width = 16}
+upsetplot(res)
+```
+
+
+Volcano plot:
+
+```{r}
+plot(tb$log2fc, -log10(tb$p.adjust))
+abline(h = 3, lty = 2)  # FDR < 0.001
+abline(v = 1, lty = 2)   # log2fc > 1
+```
+
+-------------------------------
+
+Next we demonstrate visualization on GSEA results. First we perform GSEA also by **clusterProfiler**.
+Note here we also set `pvalueCutoff = 1` because we need the full set of results for some plots.
+
+```{r}
+load("gene_diff_score.RData")
+gene_diff_score = sort(gene_diff_score, decreasing = TRUE)
+res_gsea = gseGO(geneList=gene_diff_score, OrgDb = org.Hs.eg.db, ont = "BP", pvalueCutoff = 1)
+```
+
+Let's check what columns are there in the result table:
+
+```{r}
+head(res_gsea@result)
+```
+
+
+In barplot, `NES` can be used for x-axis:
+
+```{r}
+enrichplot:::barplot.enrichResult(res_gsea, showCategory = 20, x = "NES")
+dotplot(res_gsea, showCategory = 20, x = "NES")
+```
+
+Also, in Upset plot, now the distribution of gene-level statistics is added to each combination set.
+
+```{r, fig.width = 12}
+upsetplot(res_gsea)
+```
+
+Ridge plot visualizes the general distribution of gene-level statistics in each set.
+
+```{r}
+ridgeplot(res_gsea)
+```
+
+And the famous GSEA plot.
+
+```{r}
+gseaplot(res_gsea, geneSetID = 1)
+```
+
+```{r}
+gseaplot2(res_gsea, geneSetID = 1)
+```
+
+We can also compare multiple gene set in one GSEA plot. In the following plot, we 
+visualize the most up-regulated gene set and the most down-regulated gene set.
+
+```{r}
+ind = c(which.max(res_gsea@result$NES), which.min(res_gsea@result$NES))
+gseaplot2(res_gsea, geneSetID = ind)
+```
+
+
+Note to make the vocalno plot. NES scores are used for x-axis:
+
+```{r}
+tb_gsea = res_gsea@result
+plot(tb_gsea$NES, -log10(tb_gsea$p.adjust))
+abline(h = -log10(0.05), lty = 2)  # FDR < 0.05
+abline(v = c(-1, 1), lty = 2)   # log2fc > 1, log2fc < -1
+```
+
+
+If the GSEA is done by other packages, e.g. by **EnrichmentBrowser** package:
+
+```{r}
+library(EnrichmentBrowser)
+library(CePa)
+condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
+expr = read.gct("P53_collapsed_symbols.gct")
+
+library(SummarizedExperiment)
+se = SummarizedExperiment(assays = SimpleList(expr = expr))
+colData(se) = DataFrame(GROUP = ifelse(condition == "WT", 1, 0))
+
+l = condition == "WT"
+
+library(genefilter)
+tdf = rowttests(expr, factor(condition))
+rowData(se) = DataFrame(FC = log2(rowMeans(expr[, l])/rowMeans(expr[, !l])),
+                        ADJ.PVAL = p.adjust(tdf$p.value))
+
+library(msigdbr)
+gs = msigdbr(category = "H")
+gs = split(gs$gene_symbol, gs$gs_name)
+
+res = sbea(method = "gsea", se = se, gs = gs)
+tb = gsRanking(res, signif.only = FALSE)
+```
+
+Plot the top 10 gene sets:
+
+```{r}
+top = order(tb$PVAL)[1:10]
+
+#stat = -log10(tb$PVAL)
+stat = tb$NES
+names(stat) = tb$GENE.SET
+barplot(stat[top], horiz = TRUE,col = ifelse(tb$PVAL[top] < 0.05, "red", "grey"))
+```
+
+Volcano plot:
+
+```{r}
+plot(tb$NES, -log10(tb$PVAL))
+```
