@@ -17,9 +17,23 @@ diff genes.
 
 If your genes IDs are not Entrez ID, use the function `convert_to_entrez_id()` introduced in "day1_clusterProfiler_ora.html".
 
+```{r}
+df = read.table("E-GEOD-101794-analytics.tsv", sep="\t", quote = "", header = TRUE)
+df = df[, c(1, 3)]
+colnames(df) = c("gene", "pvalue")
+df$padj = p.adjust(df$pvalue, "BH")
+df = df[!is.na(df$padj), ]
+```
+
 ### Use MSigDB gene sets
 
 Follow the instruction in "day1_msigdbr.html" and extract gene sets in category "C5" and subcategory "GO:BP".
+
+```{r}
+library(msigdbr)
+gene_sets = msigdbr(category = "C5", subcategory = "BP")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+```
 
 ### Use clusterProfiler
 
@@ -27,6 +41,20 @@ Compare enrichment results under different settings:
 
 1. with default background 
 2. set background as total genes in the experiment.
+
+```{r}
+diff_gene = df$gene[df$padj < 0.01]
+diff_gene = convert_to_entrez_id(diff_gene)
+tb = enricher(gene = diff_gene, TERM2GENE = map)
+
+tb_with_bg = enricher(gene = diff_gene, TERM2GENE = map, universe = convert_to_entrez_id(df$gene))
+
+lt = list(default = tb$ID[tb$p.adjust < 0.01],
+    with_bg = tb_with_bg$ID[tb_with_bg$p.adjust < 0.01])
+
+library(eulerr)
+plot(euler(lt))
+```
 
 You can use a Venn diagram or a Euler (via package **eulerr**) to compare.
 
@@ -36,6 +64,31 @@ You can also compare the selection of cutoffs for adjusted p-values for diff gen
 2. set fdr < 0.01
 3. select top 500 most significant genes
 4. select top 1000 most significant genes
+
+```{r}
+diff_gene = df$gene[df$padj < 0.05]
+diff_gene = convert_to_entrez_id(diff_gene)
+tb1 = enricher(gene = diff_gene, TERM2GENE = map)
+
+diff_gene = df$gene[df$padj < 0.01]
+diff_gene = convert_to_entrez_id(diff_gene)
+tb2 = enricher(gene = diff_gene, TERM2GENE = map)
+
+diff_gene = df$gene[order(df$padj)[1:500]]
+diff_gene = convert_to_entrez_id(diff_gene)
+tb3 = enricher(gene = diff_gene, TERM2GENE = map)
+
+diff_gene = df$gene[order(df$padj)[1:1000]]
+diff_gene = convert_to_entrez_id(diff_gene)
+tb4 = enricher(gene = diff_gene, TERM2GENE = map)
+
+lt = list(fdr_05 = tb1$ID[tb1$p.adjust < 0.01],
+          fdr_01 = tb2$ID[tb2$p.adjust < 0.01],
+          top_500 = tb3$ID[tb3$p.adjust < 0.01],
+          top_1000 = tb4$ID[tb4$p.adjust < 0.01])
+   
+plot(euler(lt))
+```
 
 ### Compare hypergeometric distribution and chi-square test
 
@@ -105,24 +158,6 @@ gene_set = gs_db$gene_symbol[gs_db$gs_name == "KEGG_ABC_TRANSPORTERS"]
 ora_test(diff_gene, bg_gene, gene_set)
 ```
 
-```{r}
-lt = list(
-    geneset1 = gene_set ,
-    geneset2 = ...
-
-)
-
-# lt is a list of gene sets
-
-n_set = length(lt)
-pmat = matrix(nrow = n_set, ncol = 2)
-for(i in 1:n_set) {
-    pmat[i, ] = ora_test(diff_gene, bg_gene, lt[[i]])
-}
-
-# a p-value (2-column) matrix, first colum is form hypergeometric, the second colum is from chi-sq test
-# compare the two list of p-values
-```
 
 The function returns a vector of length two: p-values from the two test.
 

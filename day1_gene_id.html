@@ -12,7 +12,7 @@
 
 
 
-<title>day1_clusterProfiler_ora</title>
+<title>Gene ID conversion</title>
 
 <script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
 
@@ -127,61 +127,95 @@ a.sourceLine {
 
 
 <section class="page-header">
-<h1 class="title toc-ignore project-name">day1_clusterProfiler_ora</h1>
+<h1 class="title toc-ignore project-name">Gene ID conversion</h1>
 </section>
 
 
 
 <section class="main-content">
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">&quot;demo_ora.RData&quot;</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(clusterProfiler)</span></code></pre></div>
-<pre><code>## Warning: package &#39;clusterProfiler&#39; was built under R version 4.2.1</code></pre>
-<p><strong>You need to make sure the gene IDs are Entrez IDs.</strong> The following function helps to automatically convert gene IDs to Entrez IDs. The input can be a vector of genes or a gene expression matrix.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>convert_to_entrez_id <span class="ot">=</span> <span class="cf">function</span>(x, <span class="at">org_db =</span> <span class="st">&quot;org.Hs.eg.db&quot;</span>) {</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="fu">is.matrix</span>(x)) {</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        map <span class="ot">=</span> cola<span class="sc">:::</span><span class="fu">guess_id_mapping</span>(<span class="fu">rownames</span>(x), <span class="at">org_db =</span> org_db)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">is.function</span>(map)) {</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>            new_rn <span class="ot">=</span> <span class="fu">map</span>(<span class="fu">rownames</span>(x))</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>            new_rn <span class="ot">=</span> map[<span class="fu">rownames</span>(x)]</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        }</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        l <span class="ot">=</span> <span class="fu">is.na</span>(new_rn)</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        x <span class="ot">=</span> x[<span class="sc">!</span>l, , drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        new_rn <span class="ot">=</span> new_rn[<span class="sc">!</span>l]</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> <span class="fu">do.call</span>(rbind, <span class="fu">tapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(x), new_rn, <span class="cf">function</span>(ind) {</span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>            <span class="fu">colMeans</span>(x[ind, , <span class="at">drop =</span> <span class="cn">FALSE</span>])</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        }))</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span>(x2)</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> <span class="cf">if</span>(<span class="fu">is.numeric</span>(x)) {</span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        map <span class="ot">=</span> cola<span class="sc">:::</span><span class="fu">guess_id_mapping</span>(<span class="fu">names</span>(x), <span class="at">org_db =</span> org_db)</span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> x</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">is.function</span>(map)) {</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>            <span class="fu">names</span>(x2) <span class="ot">=</span> <span class="fu">map</span>(<span class="fu">names</span>(x))</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>            <span class="fu">names</span>(x2) <span class="ot">=</span> map[<span class="fu">names</span>(x)]</span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>        }</span>
-<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> x2[<span class="sc">!</span><span class="fu">is.na</span>(<span class="fu">names</span>(x2))]</span>
-<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> <span class="fu">tapply</span>(x2, <span class="fu">names</span>(x2), mean)</span>
-<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span>(x2)</span>
-<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
-<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>        map <span class="ot">=</span> cola<span class="sc">:::</span><span class="fu">guess_id_mapping</span>(x, <span class="at">org_db =</span> org_db)</span>
-<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">is.function</span>(map)) {</span>
-<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>            x2 <span class="ot">=</span> <span class="fu">map</span>(x)</span>
-<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
-<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>            x2 <span class="ot">=</span> map[x]</span>
-<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        }</span>
-<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> x2[<span class="sc">!</span><span class="fu">is.na</span>(x2)]</span>
-<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> <span class="fu">unique</span>(x2)</span>
-<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span>(x2)</span>
-<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
-<p>We convert the diff genes <code>diff_gene</code> to Entrez IDs. Note some genes are lost due to the conversion.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(diff_gene)</span></code></pre></div>
-<pre><code>## [1] &quot;FGR&quot;    &quot;NIPAL3&quot; &quot;LAP3&quot;   &quot;CASP10&quot; &quot;CAMKK1&quot; &quot;PRSS22&quot;</code></pre>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>diff_gene <span class="ot">=</span> <span class="fu">convert_to_entrez_id</span>(diff_gene)</span></code></pre></div>
+<p>The bioconductor organism annotation packages provide sources for converting between different gene ID types:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(org.Hs.eg.db)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span>(<span class="at">envir =</span> <span class="fu">asNamespace</span>(<span class="st">&quot;org.Hs.eg.db&quot;</span>))</span></code></pre></div>
+<pre><code>##  [1] &quot;org.Hs.eg&quot;                &quot;org.Hs.eg.db&quot;            
+##  [3] &quot;org.Hs.egACCNUM&quot;          &quot;org.Hs.egACCNUM2EG&quot;      
+##  [5] &quot;org.Hs.egALIAS2EG&quot;        &quot;org.Hs.egCHR&quot;            
+##  [7] &quot;org.Hs.egCHRLENGTHS&quot;      &quot;org.Hs.egCHRLOC&quot;         
+##  [9] &quot;org.Hs.egCHRLOCEND&quot;       &quot;org.Hs.egENSEMBL&quot;        
+## [11] &quot;org.Hs.egENSEMBL2EG&quot;      &quot;org.Hs.egENSEMBLPROT&quot;    
+## [13] &quot;org.Hs.egENSEMBLPROT2EG&quot;  &quot;org.Hs.egENSEMBLTRANS&quot;   
+## [15] &quot;org.Hs.egENSEMBLTRANS2EG&quot; &quot;org.Hs.egENZYME&quot;         
+## [17] &quot;org.Hs.egENZYME2EG&quot;       &quot;org.Hs.egGENENAME&quot;       
+## [19] &quot;org.Hs.egGENETYPE&quot;        &quot;org.Hs.egGO&quot;             
+## [21] &quot;org.Hs.egGO2ALLEGS&quot;       &quot;org.Hs.egGO2EG&quot;          
+## [23] &quot;org.Hs.egMAP&quot;             &quot;org.Hs.egMAP2EG&quot;         
+## [25] &quot;org.Hs.egMAPCOUNTS&quot;       &quot;org.Hs.egOMIM&quot;           
+## [27] &quot;org.Hs.egOMIM2EG&quot;         &quot;org.Hs.egORGANISM&quot;       
+## [29] &quot;org.Hs.egPATH&quot;            &quot;org.Hs.egPATH2EG&quot;        
+## [31] &quot;org.Hs.egPFAM&quot;            &quot;org.Hs.egPMID&quot;           
+## [33] &quot;org.Hs.egPMID2EG&quot;         &quot;org.Hs.egPROSITE&quot;        
+## [35] &quot;org.Hs.egREFSEQ&quot;          &quot;org.Hs.egREFSEQ2EG&quot;      
+## [37] &quot;org.Hs.egSYMBOL&quot;          &quot;org.Hs.egSYMBOL2EG&quot;      
+## [39] &quot;org.Hs.egUCSCKG&quot;          &quot;org.Hs.egUNIPROT&quot;        
+## [41] &quot;org.Hs.eg_dbInfo&quot;         &quot;org.Hs.eg_dbconn&quot;        
+## [43] &quot;org.Hs.eg_dbfile&quot;         &quot;org.Hs.eg_dbschema&quot;</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>genes <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;TP53&quot;</span>, <span class="st">&quot;MDM2&quot;</span>)</span></code></pre></div>
+<ol style="list-style-type: decimal">
+<li>convert to Entrez gene ID:</li>
+</ol>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>eg <span class="ot">=</span> <span class="fu">unlist</span>(<span class="fu">as.list</span>(org.Hs.egSYMBOL2EG[genes]))</span></code></pre></div>
+<ol start="2" style="list-style-type: decimal">
+<li>convert to ensembl gene ID</li>
+</ol>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>en <span class="ot">=</span> <span class="fu">unlist</span>(<span class="fu">as.list</span>(org.Hs.egENSEMBL[eg]))</span></code></pre></div>
+<ol start="3" style="list-style-type: decimal">
+<li>convert to Refseq ID</li>
+</ol>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>refseq <span class="ot">=</span> <span class="fu">as.list</span>(org.Hs.egREFSEQ[eg])</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sapply</span>(refseq, <span class="cf">function</span>(x) x[<span class="dv">1</span>])</span></code></pre></div>
+<pre><code>##           7157           4193 
+##    &quot;NM_000546&quot; &quot;NM_001145336&quot;</code></pre>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>convert_to_entrez_id <span class="ot">=</span> <span class="cf">function</span>(x, <span class="at">org_db =</span> <span class="st">&quot;org.Hs.eg.db&quot;</span>) {</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="fu">is.matrix</span>(x)) {</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        map <span class="ot">=</span> cola<span class="sc">:::</span><span class="fu">guess_id_mapping</span>(<span class="fu">rownames</span>(x), <span class="at">org_db =</span> org_db)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">is.function</span>(map)) {</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>            new_rn <span class="ot">=</span> <span class="fu">map</span>(<span class="fu">rownames</span>(x))</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>            new_rn <span class="ot">=</span> map[<span class="fu">rownames</span>(x)]</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        l <span class="ot">=</span> <span class="fu">is.na</span>(new_rn)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>        x <span class="ot">=</span> x[<span class="sc">!</span>l, , drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>        new_rn <span class="ot">=</span> new_rn[<span class="sc">!</span>l]</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> <span class="fu">do.call</span>(rbind, <span class="fu">tapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(x), new_rn, <span class="cf">function</span>(ind) {</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>            <span class="fu">colMeans</span>(x[ind, , <span class="at">drop =</span> <span class="cn">FALSE</span>])</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>        }))</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span>(x2)</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> <span class="cf">if</span>(<span class="fu">is.numeric</span>(x)) {</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>        map <span class="ot">=</span> cola<span class="sc">:::</span><span class="fu">guess_id_mapping</span>(<span class="fu">names</span>(x), <span class="at">org_db =</span> org_db)</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> x</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">is.function</span>(map)) {</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>            <span class="fu">names</span>(x2) <span class="ot">=</span> <span class="fu">map</span>(<span class="fu">names</span>(x))</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>            <span class="fu">names</span>(x2) <span class="ot">=</span> map[<span class="fu">names</span>(x)]</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> x2[<span class="sc">!</span><span class="fu">is.na</span>(<span class="fu">names</span>(x2))]</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> <span class="fu">tapply</span>(x2, <span class="fu">names</span>(x2), mean)</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span>(x2)</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>        map <span class="ot">=</span> cola<span class="sc">:::</span><span class="fu">guess_id_mapping</span>(x, <span class="at">org_db =</span> org_db)</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">is.function</span>(map)) {</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>            x2 <span class="ot">=</span> <span class="fu">map</span>(x)</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>        } <span class="cf">else</span> {</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>            x2 <span class="ot">=</span> map[x]</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> x2[<span class="sc">!</span><span class="fu">is.na</span>(x2)]</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>        x2 <span class="ot">=</span> <span class="fu">unique</span>(x2)</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span>(x2)</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">convert_to_entrez_id</span>(genes)</span></code></pre></div>
 <pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
 ##   as.list() instead.</code></pre>
 <pre><code>## testing org.Hs.egENSEMBL...</code></pre>
@@ -191,227 +225,44 @@ a.sourceLine {
 <pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
 ##   as.list() instead.</code></pre>
 <pre><code>## testing org.Hs.egSYMBOL...
-##   gene id might be SYMBOL (p = 0.980)</code></pre>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(diff_gene)</span></code></pre></div>
-<pre><code>## [1] &quot;2268&quot;  &quot;57185&quot; &quot;51056&quot; &quot;843&quot;   &quot;84254&quot; &quot;64063&quot;</code></pre>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(diff_gene)</span></code></pre></div>
-<pre><code>## [1] 959</code></pre>
-<p>Next we perform ORA on different gene sets</p>
-<ol style="list-style-type: decimal">
-<li>GO enrichment</li>
-</ol>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(org.Hs.eg.db)</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">=</span> <span class="fu">enrichGO</span>(<span class="at">gene =</span> diff_gene, <span class="at">ont =</span> <span class="st">&quot;BP&quot;</span>, <span class="at">OrgDb =</span> org.Hs.eg.db)</span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tb)</span></code></pre></div>
-<pre><code>##                    ID
-## GO:0006959 GO:0006959
-## GO:0002443 GO:0002443
-## GO:0006909 GO:0006909
-## GO:0002253 GO:0002253
-## GO:0002440 GO:0002440
-## GO:0002460 GO:0002460
-##                                                                                                                          Description
-## GO:0006959                                                                                                   humoral immune response
-## GO:0002443                                                                                               leukocyte mediated immunity
-## GO:0006909                                                                                                              phagocytosis
-## GO:0002253                                                                                             activation of immune response
-## GO:0002440                                                                       production of molecular mediator of immune response
-## GO:0002460 adaptive immune response based on somatic recombination of immune receptors built from immunoglobulin superfamily domains
-##            GeneRatio   BgRatio       pvalue     p.adjust       qvalue
-## GO:0006959    69/849 320/18903 2.811731e-28 1.443262e-24 1.155177e-24
-## GO:0002443    81/849 463/18903 1.718907e-26 4.411575e-23 3.530997e-23
-## GO:0006909    64/849 314/18903 7.419563e-25 1.269487e-21 1.016090e-21
-## GO:0002253    72/849 397/18903 1.326003e-24 1.701593e-21 1.361944e-21
-## GO:0002440    65/849 333/18903 3.955702e-24 4.060923e-21 3.250338e-21
-## GO:0002460    69/849 375/18903 5.419714e-24 4.636565e-21 3.711078e-21
-##                                                                                                                                                                                                                                                                                                                                                                                                                                                           geneID
-## GO:0006959                                                                        6556/729/2920/2219/4069/54209/730249/6347/3458/5967/722/725/5266/6590/54210/6372/3553/3512/3569/4283/8547/714/10417/6280/6283/2921/6374/5196/2919/717/64127/3627/6373/3576/5968/713/712/1755/1604/3133/5699/3426/3514/3538/3539/3494/3501/3493/28385/28473/28452/28448/28468/28444/28442/28434/28394/28424/28423/28420/28464/28409/28414/28408/28410/28912/629/100423062/28439
-## GO:0002443 2268/4843/7305/57823/729/50943/7037/3383/54209/50487/51311/10312/57379/10384/8809/8013/729230/3598/722/725/54210/6372/3553/30817/5819/3569/2209/910/2207/714/10417/8741/6850/717/64127/11314/6338/3965/5724/136/64581/713/712/2624/2242/1604/2214/6891/3133/3134/57126/3426/3136/3514/3538/3539/3494/3501/3493/28385/28473/28452/28448/28468/28444/28442/28434/28394/28424/28423/28420/28464/28409/28414/28408/28410/3106/100423062/387837/28439/6348
-## GO:0006909                                                                                         2268/23221/7305/6556/2219/54209/10326/3055/1089/6347/3458/4688/722/725/3553/3601/948/8291/7097/8547/5795/2209/26060/2207/10417/6850/717/64127/11314/929/2358/5031/64581/8877/196527/2624/5359/7052/3514/3538/3539/3494/3501/3493/28385/28473/28452/28448/28468/28444/28442/28434/28394/28424/28423/28420/28464/28409/28414/28408/28410/100423062/28439/338382
-## GO:0002253                                               2268/7305/11119/729/50943/2219/58484/54209/3055/80381/10384/2633/8013/722/725/81030/3553/2867/5819/9473/8547/64332/5795/23228/26060/2207/714/4332/80149/6850/717/64127/11314/2358/2357/64581/713/712/2359/5359/1604/728/3426/93978/3514/3538/3539/3494/3501/3493/28385/28473/28452/28448/28468/28444/28442/28434/28394/28424/28423/28420/28464/28409/28414/28408/28410/150372/11027/629/100423062/28439
-## GO:0002440                                                                      50943/7037/54/57379/942/7474/8809/8013/729230/3598/54210/3553/2867/948/3569/10417/8741/6850/64127/51237/64581/7293/9516/1604/3133/3134/28908/28906/28874/28876/28892/28784/28774/28772/28820/28822/28775/28781/28823/28776/28825/28813/28797/28814/28815/28816/28773/28875/28870/28943/28912/28937/28942/28938/28923/28885/28941/28891/28915/28882/28299/28913/28935/28902/28903
-## GO:0002460                                                              6556/729/50943/7037/3383/54209/51311/10312/57379/10384/9173/8809/29126/729230/3598/722/725/3553/5819/3569/10068/64332/2209/910/2207/714/8741/80149/717/64127/3726/64581/713/712/1604/246778/2214/6891/3133/3134/3426/93978/3136/3514/3538/3539/3494/3501/3493/28385/28473/28452/28448/28468/28444/28442/28434/28394/28424/28423/28420/28464/28409/28414/28408/28410/3106/100423062/28439
-##            Count
-## GO:0006959    69
-## GO:0002443    81
-## GO:0006909    64
-## GO:0002253    72
-## GO:0002440    65
-## GO:0002460    69</code></pre>
-<ol start="2" style="list-style-type: decimal">
-<li>KEGG enrichment</li>
-</ol>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">=</span> <span class="fu">enrichKEGG</span>(<span class="at">gene =</span> diff_gene, <span class="at">organism =</span> <span class="st">&quot;hsa&quot;</span>)</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tb)</span></code></pre></div>
-<pre><code>##                ID                                                   Description
-## hsa04060 hsa04060                        Cytokine-cytokine receptor interaction
-## hsa04061 hsa04061 Viral protein interaction with cytokine and cytokine receptor
-## hsa04657 hsa04657                                       IL-17 signaling pathway
-## hsa04380 hsa04380                                    Osteoclast differentiation
-## hsa05323 hsa05323                                          Rheumatoid arthritis
-## hsa04668 hsa04668                                         TNF signaling pathway
-##          GeneRatio  BgRatio       pvalue     p.adjust       qvalue
-## hsa04060    50/443 295/8223 1.897256e-13 5.843550e-11 5.072664e-11
-## hsa04061    27/443 100/8223 1.269215e-12 1.954591e-10 1.696740e-10
-## hsa04657    25/443  94/8223 1.272859e-11 1.306802e-09 1.134407e-09
-## hsa04380    28/443 128/8223 1.173465e-10 9.035679e-09 7.843686e-09
-## hsa05323    23/443  93/8223 4.206577e-10 2.591251e-08 2.249412e-08
-## hsa04668    25/443 114/8223 1.126837e-09 5.784431e-08 5.021345e-08
-##                                                                                                                                                                                                                                                                   geneID
-## hsa04060 53832/608/2920/3595/3589/5008/1440/6354/6347/55801/3458/3552/7850/9173/8809/8807/1441/729230/3624/3598/6372/3553/51554/9518/3601/3569/3557/4283/94/56477/58191/8741/3577/2921/6374/5196/2919/3627/6373/3576/8794/1237/3579/7293/8784/246778/6351/9560/6349/6348
-## hsa04061                                                                                                                     53832/2920/6354/6347/8809/8807/729230/6372/51554/3569/4283/56477/3577/2921/6374/5196/2919/3627/6373/3576/8794/1237/3579/6351/9560/6349/6348
-## hsa04657                                                                                                                                  5743/2920/1440/6354/6347/3458/727897/6372/3553/2354/3569/4322/6279/3934/4314/6280/2921/6374/2919/3627/3576/2353/1051/8061/4312
-## hsa04380                                                                                                            7305/54209/10326/54/11024/3458/3552/6772/2274/4688/8503/3553/2354/10288/2212/2209/2215/6850/2353/126014/3726/8061/9021/353514/2214/11025/11027/79168
-## hsa05323                                                                                                                                                2920/3383/3589/54/6347/10312/3458/942/3552/6372/3553/3569/7097/4314/8741/2921/6374/2919/3576/2353/4312/6349/6348
-## hsa04668                                                                                                                                  843/6401/5743/2920/3383/6347/8809/8503/6372/3659/3553/3569/4314/4323/8986/2921/6374/2919/64127/197259/3627/2353/3726/1051/9021
-##          Count
-## hsa04060    50
-## hsa04061    27
-## hsa04657    25
-## hsa04380    28
-## hsa05323    23
-## hsa04668    25</code></pre>
-<ol start="3" style="list-style-type: decimal">
-<li>Reactome enrichment</li>
-</ol>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ReactomePA)</span></code></pre></div>
-<pre><code>## Warning: package &#39;ReactomePA&#39; was built under R version 4.2.1</code></pre>
-<pre><code>## ReactomePA v1.42.0  For help: https://yulab-smu.top/biomedical-knowledge-mining-book/
-## 
-## If you use ReactomePA in published research, please cite:
-## Guangchuang Yu, Qing-Yu He. ReactomePA: an R/Bioconductor package for reactome pathway analysis and visualization. Molecular BioSystems 2016, 12(2):477-479</code></pre>
-<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">=</span> <span class="fu">enrichPathway</span>(<span class="at">gene =</span> diff_gene)</span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tb)</span></code></pre></div>
-<pre><code>##                          ID
-## R-HSA-6798695 R-HSA-6798695
-## R-HSA-6783783 R-HSA-6783783
-## R-HSA-380108   R-HSA-380108
-## R-HSA-449147   R-HSA-449147
-## R-HSA-198933   R-HSA-198933
-## R-HSA-6785807 R-HSA-6785807
-##                                                                            Description
-## R-HSA-6798695                                                 Neutrophil degranulation
-## R-HSA-6783783                                                 Interleukin-10 signaling
-## R-HSA-380108                                       Chemokine receptors bind chemokines
-## R-HSA-449147                                                 Signaling by Interleukins
-## R-HSA-198933  Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell
-## R-HSA-6785807                               Interleukin-4 and Interleukin-13 signaling
-##               GeneRatio   BgRatio       pvalue     p.adjust       qvalue
-## R-HSA-6798695    72/590 482/10899 1.452548e-15 1.616686e-12 1.536643e-12
-## R-HSA-6783783    21/590  47/10899 5.960515e-15 3.317026e-12 3.152799e-12
-## R-HSA-380108     22/590  59/10899 1.266801e-13 4.699831e-11 4.467140e-11
-## R-HSA-449147     63/590 473/10899 1.825204e-11 5.078630e-09 4.827184e-09
-## R-HSA-198933     28/590 134/10899 4.635942e-10 1.031961e-07 9.808678e-08
-## R-HSA-6785807    23/590 108/10899 1.148775e-08 2.130977e-06 2.025471e-06
-##                                                                                                                                                                                                                                                                                                                                                                                                          geneID
-## R-HSA-6798695 2268/64386/5329/7305/55/6556/2219/4680/4069/5836/10326/10562/3614/10493/10312/5768/5328/10549/7130/6590/27180/10288/1116/6947/948/10970/7097/6386/53831/2212/6279/3934/5795/2207/3101/2215/5284/1520/6282/6280/6283/3577/4332/2919/1508/338339/11314/6036/5724/929/126014/1084/2358/2357/116844/160364/10855/3310/4973/196527/3579/222487/199675/2204/1604/728/3107/11025/57126/3106/150372/81567
-## R-HSA-6783783                                                                                                                                                                                                                                                                                         5743/2920/3383/7076/1440/6347/942/3552/7850/729230/3553/3569/3557/2919/3627/5724/3576/2357/6351/6349/6348
-## R-HSA-380108                                                                                                                                                                                                                                                                                 2920/6354/6347/729230/6372/51554/4283/56477/58191/3577/2921/6374/5196/2919/3627/6373/3576/1237/3579/6351/6349/6348
-## R-HSA-449147                                                                     4843/53832/3082/6196/5743/2920/3595/3383/3589/5008/3055/7076/1440/6347/595/55801/3458/6648/942/3552/6772/7850/9173/8809/8807/8503/1441/729230/3598/3553/759/3601/948/3569/3557/10068/834/1848/84166/3934/4314/6283/2919/6850/64127/3965/3627/5724/3576/2353/2357/3726/6288/9021/4582/4312/246778/5696/5699/5698/6351/6349/6348
-## R-HSA-198933                                                                                                                                                                                                                                       7305/57823/1308/29992/3383/54209/11024/54210/27180/5819/10288/1280/2209/910/10871/11314/27036/126014/8519/342510/353514/2214/3107/11025/3133/3134/3106/11027
-## R-HSA-6785807                                                                                                                                                                                                                                                                                  4843/3082/5743/3383/5008/7076/6347/595/3552/6772/3598/3553/948/3569/3934/4314/3576/2353/3726/6288/9021/4582/4312
-##               Count
-## R-HSA-6798695    72
-## R-HSA-6783783    21
-## R-HSA-380108     22
-## R-HSA-449147     63
-## R-HSA-198933     28
-## R-HSA-6785807    23</code></pre>
-<ol start="4" style="list-style-type: decimal">
-<li>DO enrichment</li>
-</ol>
-<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DOSE)</span></code></pre></div>
-<pre><code>## Warning: package &#39;DOSE&#39; was built under R version 4.2.2</code></pre>
-<pre><code>## DOSE v3.24.2  For help: https://yulab-smu.top/biomedical-knowledge-mining-book/
-## 
-## If you use DOSE in published research, please cite:
-## Guangchuang Yu, Li-Gen Wang, Guang-Rong Yan, Qing-Yu He. DOSE: an R/Bioconductor package for Disease Ontology Semantic and Enrichment analysis. Bioinformatics 2015, 31(4):608-609</code></pre>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">=</span> <span class="fu">enrichDO</span>(<span class="at">gene =</span> diff_gene, <span class="at">ont =</span> <span class="st">&quot;DO&quot;</span>)</span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tb)</span></code></pre></div>
-<pre><code>##                  ID                     Description GeneRatio   BgRatio
-## DOID:824   DOID:824                   periodontitis    44/577 147/10312
-## DOID:3388 DOID:3388             periodontal disease    47/577 169/10312
-## DOID:403   DOID:403                   mouth disease    58/577 266/10312
-## DOID:104   DOID:104    bacterial infectious disease    68/577 359/10312
-## DOID:974   DOID:974 upper respiratory tract disease    49/577 202/10312
-## DOID:552   DOID:552                       pneumonia    44/577 164/10312
-##                 pvalue     p.adjust       qvalue
-## DOID:824  4.928662e-21 3.638015e-18 1.820919e-18
-## DOID:3388 6.602569e-21 3.638015e-18 1.820919e-18
-## DOID:403  7.271821e-20 2.671182e-17 1.336994e-17
-## DOID:104  1.390747e-19 3.831508e-17 1.917767e-17
-## DOID:974  5.552193e-19 1.045151e-16 5.231245e-17
-## DOID:552  5.690476e-19 1.045151e-16 5.231245e-17
-##                                                                                                                                                                                                                                                                                                                                                            geneID
-## DOID:824                                                                                                                        4843/6401/50943/5743/2920/3595/4069/3589/5008/7076/10135/5054/9126/6354/6347/3458/3552/7850/29126/729230/54210/6372/3553/3569/3557/7097/4322/2212/6279/133/4314/10630/2215/9076/64127/3576/929/2357/1051/3579/4312/2214/3106/4321
-## DOID:3388                                                                                                        4843/6401/3082/50943/5743/2920/3595/5243/4069/3589/5008/7076/10135/5054/9126/6354/6347/3458/3552/7850/29126/729230/5328/54210/6372/3553/3569/3557/7097/4322/2212/6279/133/4314/10630/2215/9076/64127/3576/929/2357/1051/3579/4312/2214/3106/4321
-## DOID:403                                                4843/6401/3082/50943/5743/2920/3595/5243/4069/3589/5008/7076/4210/10135/5054/9126/6354/6347/54757/3458/7474/3552/7850/29126/729230/5328/6590/6615/54210/6372/3553/80326/10970/3569/3557/7097/4322/2212/6279/3934/133/4314/10630/249/2215/9076/6469/64127/3576/929/2357/1051/3579/4312/7052/2214/3106/4321
-## DOID:104  4843/6401/5329/6556/50943/5743/5243/3383/54209/5008/7076/4210/5054/6347/7450/3458/1839/942/3552/6772/29126/729230/54210/3659/3553/3620/948/3569/3557/7097/4322/834/4283/50506/2212/3934/133/4314/2209/910/58191/2215/467/6469/64127/6890/3627/6373/5724/3576/929/2358/6288/9332/3579/338442/9021/4582/4312/246778/728/5696/6891/3106/5698/629/6351/6348
-## DOID:974                                                                                                    4843/5329/50943/5243/3383/4210/5054/6354/3458/942/3552/9173/727897/729230/5328/3598/6372/3553/3569/3557/7097/834/3067/2212/4585/3486/133/2209/6374/2919/64127/6890/3627/3576/929/4023/627/2205/3579/729238/4582/7293/728/2214/6891/3107/3106/629/6351
-## DOID:552                                                                                                                        5743/2920/3383/3589/5054/1440/6354/6347/595/4891/3458/3552/9173/727897/29126/5328/3598/6590/54210/3553/3569/3557/7097/4316/4283/3486/10630/2921/6374/2919/6469/64127/6890/3965/3576/929/627/9332/729238/4582/4312/57016/2214/6351
-##           Count
-## DOID:824     44
-## DOID:3388    47
-## DOID:403     58
-## DOID:104     68
-## DOID:974     49
-## DOID:552     44</code></pre>
-<ol start="5" style="list-style-type: decimal">
-<li>MSigDB enrichment</li>
-</ol>
-<p>There is no built-in function specific for MSigDB gene sets, but there is a universal function <code>enrichr()</code> which accepts manually-specified gene sets. The gene sets object is simply a two-column data frame:</p>
-<ul>
-<li>the first column is the gene set ID</li>
-<li>the second column is the gene ID</li>
-</ul>
-<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(msigdbr)</span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>gene_sets <span class="ot">=</span> <span class="fu">msigdbr</span>(<span class="at">category =</span> <span class="st">&quot;H&quot;</span>)</span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>map <span class="ot">=</span> gene_sets[, <span class="fu">c</span>(<span class="st">&quot;gs_name&quot;</span>, <span class="st">&quot;entrez_gene&quot;</span>)]</span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">=</span> <span class="fu">enricher</span>(<span class="at">gene =</span> diff_gene, <span class="at">TERM2GENE =</span> map)</span>
-<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(tb)</span></code></pre></div>
-<pre><code>##                                                                    ID
-## HALLMARK_INTERFERON_GAMMA_RESPONSE HALLMARK_INTERFERON_GAMMA_RESPONSE
-## HALLMARK_INFLAMMATORY_RESPONSE         HALLMARK_INFLAMMATORY_RESPONSE
-## HALLMARK_INTERFERON_ALPHA_RESPONSE HALLMARK_INTERFERON_ALPHA_RESPONSE
-## HALLMARK_TNFA_SIGNALING_VIA_NFKB     HALLMARK_TNFA_SIGNALING_VIA_NFKB
-## HALLMARK_COMPLEMENT                               HALLMARK_COMPLEMENT
-## HALLMARK_IL6_JAK_STAT3_SIGNALING     HALLMARK_IL6_JAK_STAT3_SIGNALING
-##                                                           Description GeneRatio
-## HALLMARK_INTERFERON_GAMMA_RESPONSE HALLMARK_INTERFERON_GAMMA_RESPONSE    55/347
-## HALLMARK_INFLAMMATORY_RESPONSE         HALLMARK_INFLAMMATORY_RESPONSE    54/347
-## HALLMARK_INTERFERON_ALPHA_RESPONSE HALLMARK_INTERFERON_ALPHA_RESPONSE    33/347
-## HALLMARK_TNFA_SIGNALING_VIA_NFKB     HALLMARK_TNFA_SIGNALING_VIA_NFKB    49/347
-## HALLMARK_COMPLEMENT                               HALLMARK_COMPLEMENT    39/347
-## HALLMARK_IL6_JAK_STAT3_SIGNALING     HALLMARK_IL6_JAK_STAT3_SIGNALING    22/347
-##                                     BgRatio       pvalue     p.adjust
-## HALLMARK_INTERFERON_GAMMA_RESPONSE 200/4383 1.283631e-17 6.033064e-16
-## HALLMARK_INFLAMMATORY_RESPONSE     200/4383 6.465947e-17 1.519498e-15
-## HALLMARK_INTERFERON_ALPHA_RESPONSE  97/4383 8.600159e-14 1.347358e-12
-## HALLMARK_TNFA_SIGNALING_VIA_NFKB   200/4383 1.359501e-13 1.597414e-12
-## HALLMARK_COMPLEMENT                200/4383 6.053975e-08 5.690736e-07
-## HALLMARK_IL6_JAK_STAT3_SIGNALING    87/4383 5.774922e-07 4.523689e-06
-##                                          qvalue
-## HALLMARK_INTERFERON_GAMMA_RESPONSE 4.594047e-16
-## HALLMARK_INFLAMMATORY_RESPONSE     1.157064e-15
-## HALLMARK_INTERFERON_ALPHA_RESPONSE 1.025984e-12
-## HALLMARK_TNFA_SIGNALING_VIA_NFKB   1.216396e-12
-## HALLMARK_COMPLEMENT                4.333372e-07
-## HALLMARK_IL6_JAK_STAT3_SIGNALING   3.444690e-06
-##                                                                                                                                                                                                                                                                                                                                    geneID
-## HALLMARK_INTERFERON_GAMMA_RESPONSE 51056/57823/10797/3430/5743/3383/10135/6354/6347/6648/942/6772/29126/7130/81030/3659/3620/6737/94240/3601/8638/10906/3569/10068/834/10561/4283/7453/5371/84166/10410/2209/81894/9246/115361/3429/116071/6890/10791/3627/6373/2357/3669/54625/219285/9021/10581/7127/5359/5696/5699/10437/3106/5698/629
-## HALLMARK_INFLAMMATORY_RESPONSE                                6401/5329/2769/490/3383/5008/7076/4210/366/3249/6324/10135/3696/5054/1440/6354/6347/4891/1839/3552/8809/8807/1441/3624/7130/3759/6372/3659/3553/2867/3601/3569/7097/9153/4283/7162/133/4323/10630/60675/64127/3627/6373/5724/3576/136/929/2357/4973/8877/8519/1604/3269/728
-## HALLMARK_INTERFERON_ALPHA_RESPONSE                                                                                                                  51056/3430/135112/3659/6737/94240/8638/10906/2766/834/10561/83666/7453/10410/81894/9246/2634/115361/3429/116071/6890/3627/6373/3669/54625/219285/10581/8519/5359/5696/3107/10437/5698
-## HALLMARK_TNFA_SIGNALING_VIA_NFKB                                                     5329/490/5743/2920/3383/10135/5054/6347/374/595/6648/1839/3552/5341/8013/1958/3624/5328/7130/50486/6372/3659/3553/2354/3601/3569/8870/7097/3491/4929/467/2921/2919/80149/6890/3627/6373/2353/3726/1051/4973/8061/8877/7262/9021/23764/7127/9516/6351
-## HALLMARK_COMPLEMENT                                                                                                                           51056/843/5329/2219/5251/7076/760/7980/5054/5341/725/3659/948/3569/4322/834/838/1848/7941/4323/2207/714/1520/6280/6283/2919/308/1508/717/255738/1051/712/4973/23764/5359/1604/5698/629/4321
-## HALLMARK_IL6_JAK_STAT3_SIGNALING                                                                                                                                                                                                6354/5967/6772/7850/8809/1441/3659/3553/3601/948/3569/7097/4283/94/2921/5196/2919/3627/6373/929/9021/5320
-##                                    Count
-## HALLMARK_INTERFERON_GAMMA_RESPONSE    55
-## HALLMARK_INFLAMMATORY_RESPONSE        54
-## HALLMARK_INTERFERON_ALPHA_RESPONSE    33
-## HALLMARK_TNFA_SIGNALING_VIA_NFKB      49
-## HALLMARK_COMPLEMENT                   39
-## HALLMARK_IL6_JAK_STAT3_SIGNALING      22</code></pre>
+##   gene id might be SYMBOL (p = 1.000)</code></pre>
+<pre><code>## [1] &quot;7157&quot; &quot;4193&quot;</code></pre>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">convert_to_entrez_id</span>(en)</span></code></pre></div>
+<pre><code>## [1] &quot;7157&quot; &quot;4193&quot;</code></pre>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>mat <span class="ot">=</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(<span class="dv">2</span><span class="sc">*</span><span class="dv">10</span>), <span class="at">nrow =</span> <span class="dv">2</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(mat) <span class="ot">=</span> genes</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="fu">convert_to_entrez_id</span>(mat)</span></code></pre></div>
+<pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
+##   as.list() instead.</code></pre>
+<pre><code>## testing org.Hs.egENSEMBL...</code></pre>
+<pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
+##   as.list() instead.</code></pre>
+<pre><code>## testing org.Hs.egREFSEQ...</code></pre>
+<pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
+##   as.list() instead.</code></pre>
+<pre><code>## testing org.Hs.egSYMBOL...
+##   gene id might be SYMBOL (p = 1.000)</code></pre>
+<pre><code>##            [,1]      [,2]       [,3]      [,4]      [,5]       [,6]       [,7]
+## 4193 -1.1081687 1.9610485  1.4947211 0.9146694 1.1790834  0.4840939 -0.2980863
+## 7157 -0.1702156 0.5081284 -0.5232609 0.1501639 0.6848438 -0.8591484  1.1014248
+##            [,8]       [,9]       [,10]
+## 4193  1.9467065  0.4948149 -0.30441322
+## 7157 -0.5556464 -1.9815974  0.05407438</code></pre>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">=</span> <span class="fu">rnorm</span>(<span class="dv">2</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(x) <span class="ot">=</span> genes</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="fu">convert_to_entrez_id</span>(x)</span></code></pre></div>
+<pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
+##   as.list() instead.</code></pre>
+<pre><code>## testing org.Hs.egENSEMBL...</code></pre>
+<pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
+##   as.list() instead.</code></pre>
+<pre><code>## testing org.Hs.egREFSEQ...</code></pre>
+<pre><code>## Warning:   The contents() method for Bimap objects is deprecated. Please use
+##   as.list() instead.</code></pre>
+<pre><code>## testing org.Hs.egSYMBOL...
+##   gene id might be SYMBOL (p = 1.000)</code></pre>
+<pre><code>##       4193       7157 
+## -0.2814669  1.7554726</code></pre>
 </section>
 
 

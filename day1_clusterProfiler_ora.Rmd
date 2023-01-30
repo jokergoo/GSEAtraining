@@ -20,9 +20,9 @@ helps to automatically convert gene IDs to Entrez IDs. The input can be a vector
 of genes or a gene expression matrix.
 
 ```{r}
-convert_to_entrez_id = function(x) {
+convert_to_entrez_id = function(x, org_db = "org.Hs.eg.db") {
 	if(is.matrix(x)) {
-		map = cola:::guess_id_mapping(rownames(x))
+		map = cola:::guess_id_mapping(rownames(x), org_db = org_db)
 		if(is.function(map)) {
 		    new_rn = map(rownames(x))
 		} else {
@@ -39,8 +39,8 @@ convert_to_entrez_id = function(x) {
 		return(x2)
 
 	} else if(is.numeric(x)) {
-		map = cola:::guess_id_mapping(names(x))
-		x2 = s
+		map = cola:::guess_id_mapping(names(x), org_db = org_db)
+		x2 = x
 		if(is.function(map)) {
 		    names(x2) = map(names(x))
 		} else {
@@ -50,7 +50,7 @@ convert_to_entrez_id = function(x) {
 		x2 = tapply(x2, names(x2), mean)
 		return(x2)
 	} else {
-	    map = cola:::guess_id_mapping(x)
+	    map = cola:::guess_id_mapping(x, org_db = org_db)
 	    if(is.function(map)) {
 	        x2 = map(x)
 	    } else {
