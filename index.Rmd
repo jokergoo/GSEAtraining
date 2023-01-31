@@ -6,6 +6,16 @@ output:
     highlight: github
 ---
 
+## Datasets
+
+- [diff_gene.txt](diff_gene.txt)
+- [background_gene.txt](background_gene.txt)
+- [E-GEOD-101794-analytics.tsv](E-GEOD-101794-analytics.tsv)
+- [P53.cls](P53.cls)
+- [P53_collapsed_symbols.gct](P53_collapsed_symbols.gct)
+- [h.all.v7.5.1.symbols.gmt](h.all.v7.5.1.symbols.gmt)
+
+## Markdown documents
 
 ### Day 1
 
@@ -13,6 +23,12 @@ Gene set databases
 
 - [day1_process_GO.html](day1_process_GO.html)
 - [day1_msigdbr.html](day1_msigdbr.html)
+- [day1_biomart.html](day1_biomart.html)
+- [day1_kegg.html](day1_kegg.html)
+- [day1_Reactome.html](day1_Reactome.html)
+- [day1_UniProtKeywords.html](day1_UniProtKeywords.html)
+- [day1_gene_id.html](day1_gene_id.html)
+- [day1_go_excise_solutions.R](day1_go_excise_solutions.R)
 
 ORA
 
