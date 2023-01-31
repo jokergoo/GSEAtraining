@@ -6,6 +6,10 @@ output:
     highlight: github
 ---
 
+
+GitHub repo: https://github.com/jokergoo/GSEA_teaching
+
+
 ## Datasets
 
 - [diff_gene.txt](diff_gene.txt)
@@ -13,6 +17,7 @@ output:
 - [E-GEOD-101794-analytics.tsv](E-GEOD-101794-analytics.tsv)
 - [P53.cls](P53.cls)
 - [P53_collapsed_symbols.gct](P53_collapsed_symbols.gct)
+- [p53.RData](p53.RData)
 - [h.all.v7.5.1.symbols.gmt](h.all.v7.5.1.symbols.gmt)
 
 ## Markdown documents
@@ -30,24 +35,28 @@ Gene set databases
 - [day1_gene_id.html](day1_gene_id.html)
 - [day1_go_excise_solutions.R](day1_go_excise_solutions.R)
 
+
+### Day 2
+
 ORA
 
-- [day1_ora_example.html](day1_ora_example.html)
-- [day1_clusterProfiler_ora.html](day1_clusterProfiler_ora.html)
-- [day1_ora_exercise.html](day1_ora_exercise.html)
+- [day2_ora_example.html](day2_ora_example.html)
+- [day2_clusterProfiler_ora.html](day2_clusterProfiler_ora.html)
+- [day2_ora_exercise.html](day2_ora_exercise.html)
 
 GSEA tool
 
-- [day1_gsea_example.html](day1_gsea_example.html)
-- [day1_clusterProfiler_gsea.html](day1_clusterProfiler_gsea.html)
-- [day1_gsea_exercise.html](day1_gsea_exercise.html)
+- [day2_gsea_example.html](day2_gsea_example.html)
+- [day2_clusterProfiler_gsea.html](day2_clusterProfiler_gsea.html)
+- [day2_gsea_exercise.html](day2_gsea_exercise.html)
 
 
 Compare ORA and GSEA
 
-- [day1_compare_ORA_GSEA.html](day1_compare_ORA_GSEA.html)
+- [day2_compare_ORA_GSEA.html](day2_compare_ORA_GSEA.html)
 
-### Day 2
+
+GSEA framework
 
 - [day2_tiny_GSEA_framework.html](day2_tiny_GSEA_framework.html)
 - [day2_EnrichmentBrowser.html](day2_EnrichmentBrowser.html)

@@ -46,3 +46,42 @@ head(tb)
 More usages of **clusterProfiler**, please go to https://yulab-smu.top/biomedical-knowledge-mining-book/index.html.
 
 
+## For other organism
+
+
+We take pig as an example.
+
+```{r}
+library(org.Ss.eg.db)
+gene = keys(org.Ss.eg.db)
+gene_diff_score = rnorm(length(gene))
+names(gene_diff_score) = gene
+gene_diff_score = sort(gene_diff_score, decreasing = TRUE)
+res = gseGO(geneList=gene_diff_score, OrgDb = org.Ss.eg.db, ont = "BP", pvalueCutoff = 1)
+res
+```
+
+Or use other gene sets
+
+```{r}
+gene_sets = msigdbr(species = "pig", category = "H")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+tb = GSEA(geneList = gene_diff_score, TERM2GENE = map, pvalueCutoff = 1)
+```
+
+
+Or use a "rare" organism:
+
+
+```{r}
+library(BioMartGOGeneSets)
+# randomly select 1000 genes
+gene = getBioMartGenes("cclementina_eg_gene")$ensembl_gene_id
+gene_diff_score = rnorm(length(gene))
+names(gene_diff_score) = gene
+gene_diff_score = sort(gene_diff_score, decreasing = TRUE)
+
+map = getBioMartGOGeneSets("cclementina_eg_gene", as_table = TRUE)
+
+tb = GSEA(geneList = gene_diff_score, TERM2GENE = map, pvalueCutoff = 1)
+```

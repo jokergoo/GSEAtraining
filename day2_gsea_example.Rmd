@@ -24,6 +24,8 @@ library(CePa)
 condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
 expr = read.gct("P53_collapsed_symbols.gct")
 
+load("p53.RData")
+
 ln = strsplit(readLines("c2.symbols.gmt"), "\t")
 gs = lapply(ln, function(x) x[-(1:2)])
 names(gs) = sapply(ln, function(x) x[1])

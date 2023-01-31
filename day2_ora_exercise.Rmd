@@ -126,7 +126,7 @@ ora_test = function(diff_gene, bg_gene, gene_set) {
     # chi-square test
     t = chisq.test(matrix(c(n11, n21, n12, n22), nrow = 2), correct = FALSE)
     
-    print(matrix(c(n11, n21, n12, n22), nrow = 2))
+    # print(matrix(c(n11, n21, n12, n22), nrow = 2))
     p2 = t$p.value
     
     var = c(p1, p2)
@@ -156,6 +156,15 @@ gene_set = gs_db$gene_symbol[gs_db$gs_name == "KEGG_ABC_TRANSPORTERS"]
 # - gene_set
 
 ora_test(diff_gene, bg_gene, gene_set)
+```
+
+```{r}
+# test the effect of imcomplete gene set
+p = numeric(100)
+for(i in 1:100) {
+  p[i] = ora_test(diff_gene, bg_gene, sample(gene_set, 0.8*length(gene_set)))[1]
+}
+hist(p, nc = 20, main = "Only 80% of genes are annotated in a gene set")
 ```
 
 

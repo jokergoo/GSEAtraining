@@ -6,6 +6,8 @@ output:
     highlight: github
 ---
 
+`demo_ora.RData` contains two vectors, a vector of diff genes and a vector of background genes.
+
 
 ```{r}
 load("demo_ora.RData")
@@ -91,6 +93,7 @@ head(tb)
 tb = enrichKEGG(gene = diff_gene, organism = "hsa")
 head(tb)
 ```
+
 3. Reactome enrichment
 
 ```{r}
@@ -98,6 +101,7 @@ library(ReactomePA)
 tb = enrichPathway(gene = diff_gene)
 head(tb)
 ```
+
 4. DO enrichment
 
 ```{r}
@@ -122,4 +126,59 @@ map = gene_sets[, c("gs_name", "entrez_gene")]
 tb = enricher(gene = diff_gene, TERM2GENE = map)
 head(tb)
 ```
+
+## Example for other organism
+
+We take pig as an example.
+
+```{r}
+library(org.Ss.eg.db)
+diff_gene = sample(keys(org.Ss.egSYMBOL), 1000)
+```
+
+
+1. GO enrichment
+
+```{r, message = FALSE}
+tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Ss.eg.db, pvalueCutoff=1, qvalueCutoff=1)
+head(tb)
+```
+
+
+2. KEGG enrichment
+
+The KEGG code of a specific organism can be found at https://rest.kegg.jp/list/organism
+
+```{r, message = FALSE}
+tb = enrichKEGG(gene = diff_gene, organism = "ssc", pvalueCutoff=1, qvalueCutoff=1)
+head(tb)
+```
+
+3. MSigDB
+
+use `msigdbr::msigdbr_species()` to see what organisms are supported.
+
+```{r}
+gene_sets = msigdbr(species = "pig", category = "H")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+
+tb = enricher(gene = diff_gene, TERM2GENE = map, pvalueCutoff=1, qvalueCutoff=1)
+head(tb)
+```
+
+
+## Examples for rarely used organisms
+
+
+```{r}
+library(BioMartGOGeneSets)
+# randomly select 1000 genes
+all_genes = getBioMartGenes("cclementina_eg_gene")
+diff_gene = sample(all_genes$ensembl_gene_id, 1000)
+
+map = getBioMartGOGeneSets("cclementina_eg_gene", as_table = TRUE)
+
+tb = enricher(gene = diff_gene, TERM2GENE = map, pvalueCutoff=1, qvalueCutoff=1)
+```
+
 
