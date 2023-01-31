@@ -37,12 +37,11 @@ We first implement the function that calculates gene-level statistics. To make t
 - method: (t-value, log2fc, ...)
 
 
-```{r}
+```{r, eval = FALSE}
 # implement t-values as gene-level stat
 gene_level = function(mat, condition) {
   
-  tdf = genefilter:rowttests(mat, factor(condition))
-  stat = tdf$statistic
+  #method here...
   return(stat)
 }
 ```
@@ -179,8 +178,10 @@ Implementing `gene_level()` is actually simply.
 Next we implement the calculation of set-level statistics. A nature design for the set-level function is to let it accept a vector of gene-level statistics and a gene set represented as a vector of genes, like follows:
 
 ```{r, eval = FALSE}
+# gene_stat: pre-computated gene-level stat for all genes
+# geneset: a vector of genes only for a gene set
 set_fun = function(gene_stat, geneset) {
-    s = gene_stat[geneset]
+    s = gene_stat[geneset] # gene-level stat only for the gene set
     mean(s)
 }
 ```
@@ -199,11 +200,11 @@ set_fun = function(gene_stat, geneset) {
 
 However, recall the set-level can also be calculated based on genes outside of the gene set. Thus the two arguments in `set_level()` are a vector of gene-level statistics for all genes and a logical vector which shows whether genes in the current gene set. In this setting, we can know both which genes are in the set and which genes are not in the set.
 
-# before `geneset` is a vector of gene IDs
-# now `l_set`: a logical vector, which has the same length of `gene_stat`, 
-   if the value is TRUE, it means the gene is in the set, if it is FALSE, the gene is NOT in the set
 
 ```{r}
+# gene_stat: pre-computated gene-level stat for all genes
+# l_set: a logical vector where TRUE means in the gene set and FALSE means not in the gene set
+# l_set has the same length as gene_stat
 set_level = function(gene_stat, l_set, method = "mean") {
     if(!any(l_set)) {
         return(NA)
@@ -432,6 +433,7 @@ gsea_tiny = function(mat, condition,
     gene_stat = gene_level(mat, condition, method = gene_level_method, 
         transform = transform, binarize = binarize)
     
+    # now geneset is a list
     set_stat = sapply(geneset, function(set) {
         l_set = rownames(mat) %in% set
         
@@ -470,6 +472,7 @@ for(i in 1:1000) {
 A better design is to integrate permutation procedures inside `gsea_tiny()`. We first integrate sample permutation:
 
 ```{r}
+# first implement sample permutation
 gsea_tiny = function(mat, condition, 
     gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
     gene_stat, set_level_method = "mean", geneset,
@@ -609,6 +612,7 @@ To support gene permutation, we only need to permute the gene-level statistics c
 Note we also move position of `geneset` argument to the start of the argument list because it is a must-set argument.
 
 ```{r}
+# next we implement gene permutation
 gsea_tiny = function(mat, condition, geneset,
     gene_level_method = "tvalue", transform = "none", binarize = function(x) x,
     gene_stat, set_level_method = "mean",

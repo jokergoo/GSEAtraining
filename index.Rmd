@@ -60,6 +60,7 @@ GSEA framework
 
 - [day2_tiny_GSEA_framework.html](day2_tiny_GSEA_framework.html)
 - [day2_EnrichmentBrowser.html](day2_EnrichmentBrowser.html)
+- [day2_gsea_framework_solution](day2_gsea_framework_solution.html)
 
 ### Day 3
 
