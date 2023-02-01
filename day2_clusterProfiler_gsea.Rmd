@@ -18,7 +18,7 @@ head(gene_diff_score)
 library(clusterProfiler)
 library(org.Hs.eg.db)
 res = gseGO(geneList=gene_diff_score, OrgDb = org.Hs.eg.db, ont = "BP")
-res
+tb = as.data.frame(res)
 ```
 
 `gseaplot()` draws the GSEA plot:
@@ -85,3 +85,5 @@ map = getBioMartGOGeneSets("cclementina_eg_gene", as_table = TRUE)
 
 tb = GSEA(geneList = gene_diff_score, TERM2GENE = map, pvalueCutoff = 1)
 ```
+
+

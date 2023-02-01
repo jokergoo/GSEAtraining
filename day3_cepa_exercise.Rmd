@@ -1,0 +1,29 @@
+---
+title: "day3_cepa_exercise"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+Use `E-GEOD-101794-analytics.tsv` to get a list of DE and background genes (use gene symbols). You can also directly use `diff_gene.txt`/`background_gene.txt`. The two lists are also avaiable in `demo_ora.RData`.
+
+Run `cepa.ora.all()` from the **CePa** package, use `NCI` pathways.
+
+Solution:
+
+```{r}
+diff_gene = scan("diff_gene.txt", what = "character")
+bg_gene = scan("background_gene.txt", what = "character")
+```
+
+
+```{r, eval = FALSE}
+library(CePa)
+data(PID.db) # from CePa package
+res = cepa.ora.all(diff_gene, bg_gene, pc = PID.db$NCI)
+# res = load("cepa_practice.RData")
+plot(res, adj.method = "BH", only.sig = TRUE)
+plot(res, id = "txa2pathway", cen = "in.reach")
+```

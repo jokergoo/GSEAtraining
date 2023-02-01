@@ -1,0 +1,24 @@
+---
+title: "day3_CePa"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+
+```{r, eval = FALSE}
+data(PID.db)
+data(gene.list)
+# around 5min
+res = cepa.ora.all(dif = gene.list$dif, bk = gene.list$bk, pc = PID.db$NCI)
+
+# heatmap of p-values
+plot(res, adj.method = "BH", only.sig = TRUE)
+
+# result table
+p.table(res)
+
+# plot network for a specific pathway under a specific centrality
+plot(res, 1, cen = "in.degree")
+```

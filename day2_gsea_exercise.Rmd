@@ -1,5 +1,5 @@
 ---
-title: "day1_gsea_exercise"
+title: "day2_gsea_exercise"
 output:
   prettydoc::html_pretty:
     theme: cayman
@@ -11,7 +11,20 @@ output:
 2. Use your own dataset or the p53 dataset (or pick one from https://www.gsea-msigdb.org/gsea/datasets.jsp), use gene sets in category "C5" and subcategory "GO:BP", 
 run GSEA with sample permutation and gene permutation (use the official GSEA software). Compare the results.
 
+
+
 3. Use **clusterProfiler**, set gene-level score to t-value, log2fold change and -log10(p-value) and compare the results (`day1_clusterProfiler_gsea.html`, `day1_compare_ORA_GSEA.html`). Remember to also plot the distribution of the gene-level scores to see their differences (simply use `plot(sort(s))`.
+
+dataset to use `p53.RData`. In this file, there are two objects:
+
+- `expr`: the expression matrix
+- `condition`: experimental design
+
+steps:
+
+- first calculate gene scores (by t-value, by -log10(p-value) or by log2fold change)
+- then sort the gene score
+- last use `gseGO()` to perform the analysis
 
 Note, to calculate t-values or p-values from the matrix, you can use `apply()` and `t.test()` function:
 
@@ -145,6 +158,7 @@ tb_gsea_log_p = as.data.frame(tb_gsea)
 
 
 ```{r}
+library(eulerr)
 plot(euler(list(t_value = tb_gsea_tvalue$ID, 
                 log2fc = tb_gsea_log2fc$ID, 
                 "-log10_p" = tb_gsea_log_p$ID)), 

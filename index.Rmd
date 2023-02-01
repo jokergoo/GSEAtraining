@@ -67,15 +67,18 @@ GSEA framework
 On specific data types
 
 - [day3_rGREAT.html](day3_rGREAT.html)
-- [day3_goseq.html](day3_goseq.html)
+
+Topology-based pathway enrichment
+
+- [day3_cepa.html](day3_cepa.html)
+- [day3_cepa_exercise.html](day3_cepa_exercise.html)
+- [day3_topology_based_pathway_enrichment.html](day3_topology_based_pathway_enrichment.html)
+
 
 Single sample GSEA
 
 - [day3_GSVA.html](day3_GSVA.html)
 
-Topology-based pathway enrichment
-
-- [day3_topology_based_pathway_enrichment.html](day3_topology_based_pathway_enrichment.html)
 
 Ensemble of multiple GSEA results
 
