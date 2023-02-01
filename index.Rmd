@@ -19,6 +19,7 @@ GitHub repo: https://github.com/jokergoo/GSEA_teaching
 - [P53_collapsed_symbols.gct](P53_collapsed_symbols.gct)
 - [p53.RData](p53.RData)
 - [h.all.v7.5.1.symbols.gmt](h.all.v7.5.1.symbols.gmt)
+- [mm9_chipseq_peaks.bed](mm9_chipseq_peaks.bed)
 
 ## Markdown documents
 
