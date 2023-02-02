@@ -10,66 +10,22 @@ output:
 knitr::opts_chunk$set(message = FALSE, fig.width = 8)
 ```
 
-In this example, we demonstrate simplification of an ORA enrichment analysis.
+In this example, we demonstrate simplification of an GSEA enrichment analysis.
 
 ```{r}
-load("demo_ora.RData")
-```
+load("gene_diff_score.RData")
+gene_diff_score = sort(gene_diff_score, decreasing = TRUE)
 
-The following function converts gene symbols to Entrez IDs.
-
-```{r}
-convert_to_entrez_id = function(x) {
-	if(is.matrix(x)) {
-		map = cola:::guess_id_mapping(rownames(x))
-		if(is.function(map)) {
-		    new_rn = map(rownames(x))
-		} else {
-		    new_rn = map[rownames(x)]
-		}
-		l = is.na(new_rn)
-
-		x = x[!l, , drop = FALSE]
-		new_rn = new_rn[!l]
-
-		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
-			colMeans(x[ind, , drop = FALSE])
-		}))
-		return(x2)
-
-	} else if(is.numeric(x)) {
-		map = cola:::guess_id_mapping(names(x))
-		x2 = s
-		if(is.function(map)) {
-		    names(x2) = map(names(x))
-		} else {
-		    names(x2) = map[names(x)]
-		}
-		x2 = x2[!is.na(names(x2))]
-		x2 = tapply(x2, names(x2), mean)
-		return(x2)
-	} else {
-	    map = cola:::guess_id_mapping(x)
-	    if(is.function(map)) {
-	        x2 = map(x)
-	    } else {
-	        x2 = map[x]
-	    }
-	    x2 = x2[!is.na(x2)]
-	    x2 = unique(x2)
-	    return(x2)
-	}
-}
-diff_gene = convert_to_entrez_id(diff_gene)
-```
-
-We perform ORA analysis with **clusterProfiler**, and extract the list of significant GO terms:
-
-```{r}
 library(clusterProfiler)
 library(org.Hs.eg.db)
-res = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
-go_list = res@result$ID[res@result$p.adjust < 0.05]
+res = gseGO(geneList=gene_diff_score, OrgDb = org.Hs.eg.db, ont = "BP", pvalueCutoff = 1)
+```
+
+
+We extract the list of significant GO terms:
+
+```{r}
+go_list = res@result$ID[res@result$p.adjust < 0.1]
 length(go_list)
 ```
 
@@ -86,26 +42,6 @@ sim_mat = GO_similarity(go_list)
 simplifyGO(sim_mat)
 ```
 
-```{r, echo = FALSE}
-se_opt$verbose = FALSE
-```
-
-It seems there are too many clusters. There are some clusters actually showing some intermediate similarity. We can adjust the cutoff to decide whether combine or split sub-matrices.
-
-The function `select_cutoff()` tries a list of different cutoffs and plots a diagnostic plot for deciding the optimized cutoff.
-
-```{r}
-select_cutoff(sim_mat)
-```
-
-It seems 0.92 or 0.93 is a good one, it decrease the number of clusters, although the difference score decrease a little bit (this means mean similarity within clusters decreases a little bit).
-
-It is also interesting to see when cutoff >= 0.94, all GO terms will be put into a single cluster.
-
-
-```{r}
-simplifyGO(sim_mat, control = list(cutoff = 0.92))
-```
 ------------------------------
 
 Next we compare multiple GSEA results with **simplifyEnrichment**. We simply generate a ORA results for up-regulated genes
