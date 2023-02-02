@@ -19,46 +19,46 @@ load("demo_ora.RData")
 The following function converts gene symbols to Entrez IDs.
 
 ```{r}
-convert_to_entrez_id = function(x) {
-	if(is.matrix(x)) {
-		map = cola:::guess_id_mapping(rownames(x))
-		if(is.function(map)) {
-		    new_rn = map(rownames(x))
-		} else {
-		    new_rn = map[rownames(x)]
-		}
-		l = is.na(new_rn)
+convert_to_entrez_id = function(x, org_db = "org.Hs.eg.db") {
+    if(is.matrix(x)) {
+        map = cola:::guess_id_mapping(rownames(x), org_db = org_db)
+        if(is.function(map)) {
+            new_rn = map(rownames(x))
+        } else {
+            new_rn = map[rownames(x)]
+        }
+        l = is.na(new_rn)
 
-		x = x[!l, , drop = FALSE]
-		new_rn = new_rn[!l]
+        x = x[!l, , drop = FALSE]
+        new_rn = new_rn[!l]
 
-		x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
-			colMeans(x[ind, , drop = FALSE])
-		}))
-		return(x2)
+        x2 = do.call(rbind, tapply(1:nrow(x), new_rn, function(ind) {
+            colMeans(x[ind, , drop = FALSE])
+        }))
+        return(x2)
 
-	} else if(is.numeric(x)) {
-		map = cola:::guess_id_mapping(names(x))
-		x2 = s
-		if(is.function(map)) {
-		    names(x2) = map(names(x))
-		} else {
-		    names(x2) = map[names(x)]
-		}
-		x2 = x2[!is.na(names(x2))]
-		x2 = tapply(x2, names(x2), mean)
-		return(x2)
-	} else {
-	    map = cola:::guess_id_mapping(x)
-	    if(is.function(map)) {
-	        x2 = map(x)
-	    } else {
-	        x2 = map[x]
-	    }
-	    x2 = x2[!is.na(x2)]
-	    x2 = unique(x2)
-	    return(x2)
-	}
+    } else if(is.numeric(x)) {
+        map = cola:::guess_id_mapping(names(x), org_db = org_db)
+        x2 = x
+        if(is.function(map)) {
+            names(x2) = map(names(x))
+        } else {
+            names(x2) = map[names(x)]
+        }
+        x2 = x2[!is.na(names(x2))]
+        x2 = tapply(x2, names(x2), mean)
+        return(x2)
+    } else {
+        map = cola:::guess_id_mapping(x, org_db = org_db)
+        if(is.function(map)) {
+            x2 = map(x)
+        } else {
+            x2 = map[x]
+        }
+        x2 = x2[!is.na(x2)]
+        x2 = unique(x2)
+        return(x2)
+    }
 }
 diff_gene = convert_to_entrez_id(diff_gene)
 ```
@@ -87,6 +87,7 @@ First we make barplot for the significant terms:
 ```{r}
 library(enrichplot)
 barplot(res, showCategory = 20)
+barplot(res, showCategory = 20, color = "p.adjust")
 ```
 
 
@@ -103,26 +104,26 @@ The fraction is represented as strings "10/20", so we need to parse them into R 
 ```{r}
 gene_ratio = sapply(tb$GeneRatio, function(x) eval(parse(text = x)))
 bg_ratio = sapply(tb$BgRatio, function(x) eval(parse(text = x)))
-log2fc = log2(gene_ratio/bg_ratio)
+log2enrichment = log2(gene_ratio/bg_ratio)
 ```
 
-It might be interesting to see the distribution of log2 fold change.
+It might be interesting to see the distribution of log2 enrichment.
 
 ```{r}
-hist(log2fc)
+hist(log2enrichment)
 ```
 
-For the ease of use, `log2fc` is appended to both `res@result` and `tb`:
+For the ease of use, `log2enrichment` is appended to both `res@result` and `tb`:
 
 ```{r}
-res@result$log2fc = log2fc
-tb$log2fc = log2fc
+res@result$log2enrichment = log2enrichment
+tb$log2enrichment = log2enrichment
 ```
 
-Now we can set `log2fc` as values on x-axis in the barplot:
+Now we can set `log2enrichment` as values on x-axis in the barplot:
 
 ```{r}
-barplot(res, showCategory = 20, x = "log2fc")
+barplot(res, showCategory = 20, x = "log2enrichment")
 ```
 
 Making dot plot is almost the same as barplot. In dot plot, gene sets are by default reordered by values on x-axis.
@@ -131,7 +132,7 @@ Note x-axis starts from the minimal on x-axis.
 
 ```{r}
 dotplot(res, showCategory = 20)
-dotplot(res, showCategory = 20, x = "log2fc")
+dotplot(res, showCategory = 20, x = "log2enrichment")
 ```
 
 Network visualization. Note by default it only shows top 5 gene sets.
@@ -170,9 +171,9 @@ upsetplot(res)
 Volcano plot:
 
 ```{r}
-plot(tb$log2fc, -log10(tb$p.adjust))
+plot(tb$log2enrichment, -log10(tb$p.adjust))
 abline(h = 3, lty = 2)  # FDR < 0.001
-abline(v = 1, lty = 2)   # log2fc > 1
+abline(v = 1, lty = 2)   # log2enrichment > 1
 ```
 
 -------------------------------
@@ -189,7 +190,7 @@ res_gsea = gseGO(geneList=gene_diff_score, OrgDb = org.Hs.eg.db, ont = "BP", pva
 Let's check what columns are there in the result table:
 
 ```{r}
-head(res_gsea@result)
+head(res_gsea)
 ```
 
 
@@ -237,50 +238,7 @@ Note to make the vocalno plot. NES scores are used for x-axis:
 tb_gsea = res_gsea@result
 plot(tb_gsea$NES, -log10(tb_gsea$p.adjust))
 abline(h = -log10(0.05), lty = 2)  # FDR < 0.05
-abline(v = c(-1, 1), lty = 2)   # log2fc > 1, log2fc < -1
+abline(v = c(-1, 1), lty = 2)   # NES > 1, NES < -1
 ```
 
 
-If the GSEA is done by other packages, e.g. by **EnrichmentBrowser** package:
-
-```{r}
-library(EnrichmentBrowser)
-library(CePa)
-condition = read.cls("P53.cls", treatment = "MUT", control = "WT")$label
-expr = read.gct("P53_collapsed_symbols.gct")
-
-library(SummarizedExperiment)
-se = SummarizedExperiment(assays = SimpleList(expr = expr))
-colData(se) = DataFrame(GROUP = ifelse(condition == "WT", 1, 0))
-
-l = condition == "WT"
-
-library(genefilter)
-tdf = rowttests(expr, factor(condition))
-rowData(se) = DataFrame(FC = log2(rowMeans(expr[, l])/rowMeans(expr[, !l])),
-                        ADJ.PVAL = p.adjust(tdf$p.value))
-
-library(msigdbr)
-gs = msigdbr(category = "H")
-gs = split(gs$gene_symbol, gs$gs_name)
-
-res = sbea(method = "gsea", se = se, gs = gs)
-tb = gsRanking(res, signif.only = FALSE)
-```
-
-Plot the top 10 gene sets:
-
-```{r}
-top = order(tb$PVAL)[1:10]
-
-#stat = -log10(tb$PVAL)
-stat = tb$NES
-names(stat) = tb$GENE.SET
-barplot(stat[top], horiz = TRUE,col = ifelse(tb$PVAL[top] < 0.05, "red", "grey"))
-```
-
-Volcano plot:
-
-```{r}
-plot(tb$NES, -log10(tb$PVAL))
-```
