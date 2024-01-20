@@ -1,0 +1,275 @@
+---
+title: "Topic 2-02: Implement ORA from stratch"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+Implementing ORA is very simple. As long as genes and gene sets are already in the correct ID types and format, the implementation of ORA only needs several lines.
+
+
+Three inputs for ORA:
+
+- a vector of (DE) genes: `genes`
+- a list of vectors where each vector contains genes in a gene set: `gene_sets`
+- a vector of background genes: `universe`
+
+We calculate the following numbers:
+
+Number of total genes: 
+
+```r
+n_universe = length(universe)
+```
+
+Number of DE genes:
+
+```r
+n_genes = length(genes)
+```
+
+Sizes of gene sets:
+
+```r
+m = sapply(gene_sets, length)
+```
+
+
+Number of DE genes in gene sets:
+
+```r
+x = sapply(gene_sets, function(x) length(intersect(x, genes)))
+```
+
+We rename `n_genes` to `k`:
+
+```r
+k = n_genes
+```
+
+
+<style>
+.table {
+width:400px;
+}
+</style>
+
+We put these variables into the 2x2 contigency table:
+
+|      | in the set | not in the set| total |
+|------|------------:|---------------:|-------:|
+|DE    |  `x`    |   -   |  `k` |
+|not DE|  -    |      -   |  - |
+|total |  `m`    |    -     |  `n_universe` |
+
+
+Then we can calculate p-values from the hypergeometric distribution as:
+
+```r
+phyper(x - 1, m, n_universe - m, k, lower.tail = FALSE)
+```
+
+which is the same as:
+
+```r
+phyper(x - 1, k, n_universe - k, m, lower.tail = FALSE)
+```
+
+Let's put all these code into a function:
+
+
+```r
+ora = function(genes, gene_sets, universe) {
+    n_universe = length(universe)
+    n_genes = length(genes)
+    
+    x = sapply(gene_sets, function(x) length(intersect(x, genes)))
+    m = sapply(gene_sets, length)
+    n = n_universe - m
+    k = n_genes
+    
+    p = phyper(x - 1, m, n, k, lower.tail = FALSE)
+
+    data.frame(
+        gene_set = names(gene_sets),
+        hits = x,
+        n_genes = k,
+        n_gs = m,
+        n_total = n_universe,
+        p_value = p
+    )
+}
+```
+
+We can further improve the function by:
+
+1. set the default of `universe` as the total genes in `gene_sets`
+2. intersect `genes` and `gene_sets` to `universe`. Note this step also removes duplicated genes
+3. filter the result by the minimal number of DE genes in gene sets
+4. add adjusted log2 fold enrichment and p-values
+5. order the result table by the significance
+
+```{r}
+ora = function(genes, gene_sets, universe = NULL, min_hits = 3) {
+
+    if(is.null(universe)) {
+        universe = unique(unlist(gene_sets))
+    } else {
+        universe = unique(universe)
+    }
+    # restrict in universe
+    genes = intersect(genes, universe)
+    gene_sets = lapply(gene_sets, function(x) intersect(x, universe))
+
+    n_universe = length(universe)
+    n_genes = length(genes)
+    
+    x = sapply(gene_sets, function(x) length(intersect(x, genes)))
+    m = sapply(gene_sets, length)
+    n = n_universe - m
+    k = n_genes
+    
+    p = phyper(x - 1, m, n, k, lower.tail = FALSE)
+
+    df = data.frame(
+        gene_set = names(gene_sets),
+        hits = x,
+        n_genes = k,
+        n_gs = m,
+        n_total = n_universe,
+        log2fe = log2(x*n_universe/k/m),
+        p_value = p
+    )
+    df = df[df$hits >= min_hits, , drop = FALSE]
+    df$p_adjust = p.adjust(df$p_value, "BH")
+    rownames(df) = df$gene_set
+    df[order(df$p_adjust, df$p_value), ,drop = FALSE]
+}
+```
+
+Let's try our `ora()` with 1000 random genes on the MSigDB hallmark gene sets:
+
+```{r}
+library(org.Hs.eg.db)
+gs = get_msigdb(version = "2023.2.Hs", collection = "h.all")
+genes = random_genes(org.Hs.eg.db, 1000, "ENTREZID")
+
+df = ora(genes, gs)
+head(df)
+```
+
+The only restriction of `ora()` is the ID type for `genes` should be
+the same as in `gene_sets`.
+
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+The file `de.rds` contains results from a differential expression (DE) analysis.
+
+```{r}
+de = readRDS(system.file("extdata", "de.rds", package = "GSEAtraining"))
+de = de[, c("symbol", "p_value")]
+de = de[!is.na(de$p_value), ]
+head(de)
+```
+
+Take the `symbol` and `p_value` columns, set cutoff of `p_value` to 0.05, 0.01
+and 0.001 respectively to filter the significant DE genes (of course, in
+applications, you need to correct p-values), apply `ora()` to the three DE
+gene lists using the GO BP gene sets and compare the ORA results (the whatever comparison
+you can think of).
+
+
+#### Solution
+
+The three DE gene lists:
+
+```{r}
+de_genes_1 = de$symbol[de$p_value < 0.05]
+de_genes_2 = de$symbol[de$p_value < 0.01]
+de_genes_3 = de$symbol[de$p_value < 0.001]
+
+length(de_genes_1)
+length(de_genes_2)
+length(de_genes_3)
+```
+
+Grt the GO BP gene sets. Note genes in `de_genes_*` are symbols, thus genes in gene sets
+should also be symbols.
+
+```{r}
+gs = get_GO_gene_sets_from_orgdb(org.Hs.eg.db, "BP", gene_id_type = "SYMBOL")
+gs[1]
+```
+
+
+We perform ORA for the three DE gene lists.
+
+```{r}
+tb1 = ora(de_genes_1, gs)
+nrow(tb1)
+tb2 = ora(de_genes_2, gs)
+nrow(tb2)
+tb3 = ora(de_genes_3, gs)
+nrow(tb3)
+```
+
+Compare number of significant GO terms:
+
+```{r}
+sum(tb1$p_adjust < 0.05)
+sum(tb2$p_adjust < 0.05)
+sum(tb3$p_adjust < 0.05)
+```
+
+Actually we can see gene set enrichment analysis is more robust than DE analysis.
+
+Make a Venn (Euler) diagram:
+
+
+```{r}
+library(eulerr)
+plot(euler(list("DE_cutoff_0.05"  = tb1$gene_set[tb1$p_adjust < 0.05],
+                "DE_cutoff_0.01"  = tb2$gene_set[tb2$p_adjust < 0.05],
+                "DE_cutoff_0.001" = tb3$gene_set[tb3$p_adjust < 0.05])), 
+     quantities = TRUE)
+```
+
+Compare log2 fold enrichment from the three ORA results. First take the common GO terms
+in the three ORA tables.
+
+```{r}
+cn = intersect(intersect(rownames(tb1), rownames(tb2)), rownames(tb3))
+```
+
+Then simply make pairwise scatter plots:
+
+```{r, fig.width = 12, fig.height = 4}
+par(mfrow = c(1, 3))
+plot(tb1[cn, "log2fe"], tb2[cn, "log2fe"], pch = 16, cex = 0.5, col = "#00000080",
+    xlim = c(-5, 5), ylim = c(-5, 5), main = "compare log2 fold enrichment from ORA",
+    xlab = "DE_cutoff_0.05", ylab = "DE_cutoff_0.01")
+abline(a = 0, b = 1, lty = 2, col = "red")
+
+plot(tb1[cn, "log2fe"], tb3[cn, "log2fe"], pch = 16, cex = 0.5, col = "#00000080",
+    xlim = c(-5, 5), ylim = c(-5, 5), main = "compare log2 fold enrichment from ORA",
+    xlab = "DE_cutoff_0.05", ylab = "DE_cutoff_0.001")
+abline(a = 0, b = 1, lty = 2, col = "red")
+
+plot(tb2[cn, "log2fe"], tb3[cn, "log2fe"], pch = 16, cex = 0.5, col = "#00000080",
+    xlim = c(-5, 5), ylim = c(-5, 5), main = "compare log2 fold enrichment from ORA",
+    xlab = "DE_cutoff_0.01", ylab = "DE_cutoff_0.001")
+abline(a = 0, b = 1, lty = 2, col = "red")
+```

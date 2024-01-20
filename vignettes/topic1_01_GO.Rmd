@@ -1,0 +1,508 @@
+---
+title: "Topic 1-01: Get GO gene sets"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+To obtain GO gene sets, we need to use two packages: **GO.db** and **org.\*.db** packages.
+
+
+## The GO.db package
+
+We first load the package.
+
+```{r, message = FALSE}
+library(GO.db)
+```
+
+### use GO.db as a database object
+
+Before we introduce the **GO.db** package, we need to know that the **GO.db** package
+is built on top of the low-level infrastructure package **AnnotationDbi**. Thus, almost all
+Bioconductor "official data packages" inhert the same interface for querying data. Two important points:
+
+1. There is a database object which has the same name as the package name.
+2. They all implement the `select()` interface.
+
+E.g. for **GO.db**, the object `GO.db` contains a connection to the internal SQLite database object.
+
+```{r}
+GO.db
+```
+
+`GO.db` can be thought as a huge table, where `select()` can be used to extract records from certain columns under certain constraits.
+
+<img src="go_select.png" />
+
+
+`GO.db` is a relatively simple database. The typical use is as:
+
+```{r}
+select(GO.db, keys = c("GO:0000001", "GO:0000002"), columns = c("ONTOLOGY", "TERM"))
+```
+
+It can be read as "select records in the ONTOLOGY and TERM columns of the GO.db table where GOID is GO:0000001 or GO:0000002".
+
+The valid columns names can be obtained by `columns(GO.db)`.
+
+```{r}
+columns(GO.db)
+```
+
+But note for **GO.db**, there are already objects generated for retrieving GO data more easily.
+It is unlikely in practice to directly use `select()`.
+
+### The hierarchical relations of GO terms
+
+**GO.db** provides variables that contain relations between GO terms.
+Taking biological process (BP) namespace as an example, there are the following
+four variables (similar for other two namespaces, but with `GOCC` and `GOMF`
+prefix).
+
+- `GOBPCHILDREN`
+- `GOBPPARENTS`
+- `GOBPOFFSPRING`
+- `GOBPANCESTOR`
+
+
+`GOBPCHILDREN` and `GOBPPARENTS` contain parent-child relations.
+`GOBPOFFSPRING` contains all offspring terms of GO terms (i.e., all downstream
+terms of a term in the GO tree) and `GOBPANCESTOR` contais all ancestor terms
+of a GO term (i.e., all upstream terms of a term). The information in the four
+variables are actually redudant, e.g., all the other three objects can be
+constructed from `GOBPCHILDREN`. However, these pre-computated objects will
+save time in downstream analysis because traversing the GO tree is
+time-consuming.
+
+The four variables are in the same format (objects of the `AnnDbBimap` class).
+Taking `GOBPCHILDREN` as an example, we can convert it to a simpler format by:
+
+- `as.list()`
+- `asTable()`
+
+`as.list()` is also suggested by **GO.db** in its documentations.
+
+```{r}
+lt = as.list(GOBPCHILDREN)
+head(lt)
+```
+
+`lt` is a simple list of vectors where each vector are child terms of a
+specific GO term, e.g., `GO:0000002` has a child term `GO:0032042`. The
+element vectors in `lt` are also named and the names represent the relation of
+the child term to the parent term. When the element vector has a value `NA`,
+e.g. `GO::0000001`, this means the GO term is a leaf in the GO tree, and it
+has no child term.
+
+`toTable()` converts to a data frame:
+
+```{r}
+tb = toTable(GOBPCHILDREN)
+head(tb)
+```
+
+Unfortunately, the first two columns in `tb` have the same name. A good idea
+is to add meaningful column names to it.
+
+```{r}
+colnames(tb)[1:2] = c("child", "parent")
+```
+
+Please note, the previous column names `c("child", "parent")` are only valid
+for `GOBPCHILDREN`. If it is from one of the three `GOBP*` objects, readers
+please inspect the output to determine proper column names for it. E.g. you
+should assign `c("parent", "child")` to `GOBPPARENTS`.
+
+With `tb`, we can calculate the fraction of different relations of GO terms.
+
+```{r}
+tb = toTable(GOBPCHILDREN)
+table(tb[, 3])
+barplot(table(tb[, 3]), main = "BP")
+
+tb = toTable(GOMFCHILDREN)
+table(tb[, 3])
+barplot(table(tb[, 3]), main = "MF")
+
+tb = toTable(GOCCCHILDREN)
+table(tb[, 3])
+barplot(table(tb[, 3]), main = "CC")
+```
+
+
+ 
+We can look at the distribution of the numbers of GO terms in each object.
+
+1. Number of child terms. The following plot shows it follows a power-law distribution (majority of
+GO terms have very few child terms).
+
+```{r}
+lt = as.list(GOBPCHILDREN)
+tb = table(sapply(lt, length))
+x = as.numeric(names(tb))
+y = as.vector(tb)
+
+library(ggplot2)
+ggplot(data.frame(x = x, y = y), aes(x = x, y = y)) +
+    geom_point() +
+    scale_x_continuous(trans='log10') +
+    scale_y_continuous(trans='log10') +
+    labs(x = "Number of child terms", y = "Number of GO terms") + ggtitle("GOBPCHILDREN")
+```
+
+2. Number of parent terms. The term "GO:0008150" (biological process) is removed from the analysis because it is the top node in BP namespace and it has no parent term.
+
+```{r}
+lt = as.list(GOBPPARENTS)
+lt = lt[names(lt) != "GO:0008150"]
+tb = table(sapply(lt, length))
+x = as.numeric(names(tb))
+y = as.vector(tb)
+
+ggplot(data.frame(x = x, y = y), aes(x = x, y = y)) +
+    geom_point() +
+    scale_y_continuous(trans='log10') +
+    labs(x = "Number of parent terms", y = "Number of GO terms") + ggtitle("GOBOPARENTS")
+```
+
+
+`GOBPCHILDREN` and `GOBPPARENTS` contain "local/direct" relations between GO terms, `GOBPOFFSPRING`
+and `GOBPANCESTOR` contain "local + distal" relations between GO terms.
+
+```{r}
+lt = as.list(GOBPOFFSPRING)
+lt[1:2]
+tb = toTable(GOBPOFFSPRING)
+head(tb)
+```
+
+We can compare child terms and all offspring terms of "GO:0000002":
+
+```{r}
+GOBPCHILDREN[["GO:0000002"]]
+GOBPOFFSPRING[["GO:0000002"]]
+```
+
+Constructing `GOBPOFFSPRING` from `GOBPCHILDREN` needs a recursive processing and it takes time:
+
+```r
+lt_children = as.list(GOBPCHILDREN)
+
+add_children = function(term) {
+    children = lt_children[[term]]
+    if(identical(children, NA)) {
+        return(NULL)
+    }
+    env$offspring = c(env$offspring, children)
+    lapply(children, add_children)
+}
+
+lt_offspring = lapply(lt_children, function(x) {
+    if(identical(x, NA)) {
+        return(x)
+    } else {
+        env = new.env()
+        env$offspring = character(0)
+        for(y in x) {
+            add_children(y)
+        }
+        unique(env$offspring)
+    }
+})
+
+
+```
+
+### Information of GO terms
+
+Only we only see the GO IDs, the object `GOTERM` can be used to get the name and long description
+of GO terms.
+
+```{r}
+GOTERM
+```
+
+Similarly, you can use `as.list()` or `toTable()` to format this object:
+
+```{r}
+lt = as.list(GOTERM)
+tb = toTable(GOTERM)
+```
+
+There are the following three types of useful information for each GO Term:
+
+- GO name
+- GO description/definition
+- GO ontology/namespace
+
+`Term()`, `Definition()` and `Ontology()` can be directly applied to `GOTERM`:
+
+```{r}
+head(Term(GOTERM))
+head(Definition(GOTERM))
+head(Ontology(GOTERM))
+```
+
+Moreover, you can get subset the `GOTERM` object:
+
+```{r}
+GOTERM[c("GO:0000001", "GO:0000002", "GO:0000003")]
+```
+
+With `Term()`, `Definition()` and `Ontology()`, it is convinient to add additional 
+information of GO terms:
+
+```{r}
+Term(GOTERM[c("GO:0000001", "GO:0000002", "GO:0000003")])
+Definition(GOTERM[c("GO:0000001", "GO:0000002", "GO:0000003")])
+Ontology(GOTERM[c("GO:0000001", "GO:0000002", "GO:0000003")])
+```
+
+
+## Link GO terms to genes
+
+**GO.db** only contains information for GO terms.
+GO also provides gene annotated to GO terms, by manual curation or computation prediction.
+Such annotations are represented as mappings between GO IDs and gene IDs from external databases,
+which are usually synchronized between major public databases such NCBI.
+
+### org.Hs.eg.db
+
+To obtains genes in each GO term in R, Bioconductor provides a family of packages with name of
+**org.\*.db**. Let's take human for example, the corresponding package is **org.Hs.eg.db**.
+**org.Hs.eg.db** provides a standard way
+to provide mappings from Entrez gene IDs to a variaty of other databases. 
+
+```{r}
+library(org.Hs.eg.db)
+```
+
+Similarly, `org.Hs.eg.db` is a database object.
+
+```{r}
+org.Hs.eg.db
+```
+
+You can use `select()` to obtain gene-GO term relations, but there are already objects calculated
+and easier to use.
+In this package, there are two objects for mapping between GO IDs and genes:
+
+- `org.Hs.egGO2EG`
+- `org.Hs.egGO2ALLEGS`
+
+The difference between the two objects is `org.Hs.egGO2EG` contains genes that
+are *directly annotated* to every GO term, while `org.Hs.egGO2ALLEGS` contains
+genes that directly assigned to the GO term, *as well as* genes assigned to
+all its ancestor terms. For example if term A is a parent of term B where A is more general,
+genes with function B should also have function A. Thus `org.Hs.egGO2ALLEGS` is
+the proper object for GO gene sets.
+
+<img src="go_anno_true_path.png" />
+
+Again, `org.Hs.egGO2ALLEGS` is a database object. There are two ways to obtain gene annotations to GO terms. 
+
+- `as.list()`
+- `toTable()`
+
+
+```{r}
+lt = as.list(org.Hs.egGO2ALLEGS)
+lt[3:4]
+```
+
+If we compare to `org.Hs.egGO2EG` which contains incomplete genes:
+
+```{r}
+lt2 = as.list(org.Hs.egGO2EG)
+lt2[3:4]
+```
+
+The gene IDs have names. They are evidence of how genes are annotated to GO terms.
+
+Let's try `toTable()`:
+
+```{r}
+tb = toTable(org.Hs.egGO2ALLEGS)
+head(tb)
+```
+
+Now there is an additional column `"Ontology"`. This is convinient because `org.Hs.egGO2ALLEGS`
+contains GO terms from the three namespaces and the `as.list()` cannot distinguish the different namespaces.
+
+```r
+tb[tb$Ontology == "BP", ]
+
+onto = Ontology(GOTREM)
+lt[ onto(names(lt)) == "BP" ]
+```
+
+Let's calculate the frequency of evidence code:
+
+```{r}
+barplot(sort(table(tb$Evidence)))
+```
+
+
+Now it seems we have obtained the complete gene-GO relations.
+Can we directly use `org.Hs.egGO2ALLEGS` as the GO gene sets? The answer is no, check
+the gene annotation for "GO:0000002":
+
+```{r}
+org.Hs.egGO2ALLEGS[["GO:0000002"]]
+```
+
+A gene can be duplicatedly annotated to a GO term with differnet evidence code. Thus,
+to obtain the GO gene sets, we need to take the unique genes:
+
+```{r}
+lt = lapply(lt, unique)
+
+tb = tb[, 1:2]
+tb = unique(tb)
+```
+
+With `tb`, we can look at the distribution of numbers of genes in GO gene sets. It approximately follows a power-law distribution. This means majority of GO gene sets only contain intermediate numbers of genes.
+
+```{r}
+tb = toTable(org.Hs.egGO2ALLEGS)
+tb = unique(tb[tb$Ontology == "BP", 1:2])
+t1 = table(table(tb$go_id))
+x1 = as.numeric(names(t1))
+y1 = as.vector(t1)
+ggplot(data.frame(x = x1, y = y1), aes(x = x, y = y)) +
+    geom_point() +
+    scale_x_continuous(trans='log10') +
+    scale_y_continuous(trans='log10') +
+    labs(x = "Number of annotated genes", y = "Number of GO terms") + ggtitle("GOBP")
+```
+
+And the distribution of numbers of GO gene sets that a gene is annotated.
+
+```{r}
+t2 = table(table(tb$gene_id))
+x2 = as.numeric(names(t2))
+y2 = as.vector(t2)
+ggplot(data.frame(x = x2, y = y2), aes(x = x, y = y)) +
+    geom_point() +
+    scale_x_continuous(trans='log10') +
+    scale_y_continuous(trans='log10') +
+    labs(x = "Number of gene sets", y = "Number of genes") + ggtitle("GOBP")
+```
+
+Biocondutor core team maintaines **org.\*.db** for 18 organisms
+
+```{r, echo = FALSE}
+tb = read.table(textConnection(
+"org.Hs.eg.db    Human   org.Ss.eg.db    Pig
+org.Mm.eg.db    Mouse   org.Gg.eg.db    Chicken
+org.Rn.eg.db    Rat org.Mmu.eg.db   Rhesus_monkey
+org.Dm.eg.db    Fruit_fly   org.Cf.eg.db    Canine
+org.At.tair.db  Arabidopsis org.EcK12.eg.db E_coli_strain_K12
+org.Sc.sgd.db   Yeast   org.Xl.eg.db    African_clawed_frog
+org.Dr.eg.db    Zebrafish   org.Ag.eg.db    Malaria_mosquito
+org.Ce.eg.db    Nematode    org.Pt.eg.db    Chimpanzee
+org.Bt.eg.db    Bovine  org.EcSakai.eg.db   E_coli_strain_Sakai
+"))
+```
+
+```{r, echo = FALSE}
+tb[, 1] = paste0("`", tb[, 1], "`")
+tb[, 3] = paste0("`", tb[, 3], "`")
+tb[, 2] = gsub("_", " ", tb[, 2])
+tb[, 4] = gsub("_", " ", tb[, 4])
+knitr::kable(tb, col.names = c("Package", "Organism", "Package", "Organism"))
+```
+
+### Use the `select()` interface
+
+This is normally a two-step process:
+
+1. get all genes
+2. get all GO terms
+
+```{r}
+all_genes = keys(org.Hs.eg.db, keytype = "ENTREZID")
+tb = select(org.Hs.eg.db, keys = all_genes, keytype = "ENTREZID", 
+    columns = c("GOALL", "ONTOLOGYALL"))
+head(tb)
+```
+
+Then you might need to take the unique genes:
+
+
+```{r}
+tb = tb[tb$ONTOLOGYALL == "BP", 1:2]
+tb = unique(tb)
+head(tb)
+```
+
+## Practice
+
+### {.tabset}
+
+#### Practice 1
+
+We have demonstrated a gene can be duplicatedly annotated to a same GO term. Taking 
+`org.Hs.egGO2ALLEGS`, can you calculate the percent of GO terms that have duplicated genes?
+
+#### Solution
+
+
+```{r}
+lt = as.list(org.Hs.egGO2ALLEGS)
+n = length(lt)
+nd = sum(sapply(lt, function(x) any(duplicated(x))))
+nd/n
+```
+
+
+### {.tabset}
+
+#### Practice 2
+
+`org.Hs.egGO2ALLEGS` has already merged genes annotated to all offspring terms. 
+Try to manually construct GO gene sets with `GOBPOFFSPRING` and `org.Hs.egGO2EGS`, then compare to gene sets
+in `org.Hs.egGO2ALLEGS`.
+
+#### Solution
+
+
+```{r}
+lt = as.list(org.Hs.egGO2EG)
+lt2 = as.list(GOBPOFFSPRING)
+```
+
+For a GO term, we need to consider its offspring terms + the term itself:
+
+```{r}
+for(nm in names(lt2)) {
+    lt2[[nm]] = c(lt2[[nm]], nm)
+}
+```
+
+Merge all offspring terms:
+
+```{r}
+lt2 = lapply(lt2, function(x) {
+    unique(unlist(lt[x]))
+})
+```
+
+Compare to `org.Hs.egGO2ALLEGS`:
+
+```{r}
+lt3 = as.list(org.Hs.egGO2ALLEGS)
+lt3 = lapply(lt3, unique)
+
+cn = intersect(names(lt2), names(lt3))
+plot(sapply(lt2[cn], length), sapply(lt3[cn], length), log = "xy",
+    xlab = "manual gene sets", ylab = "org.Hs.egGO2ALLEGS")
+```

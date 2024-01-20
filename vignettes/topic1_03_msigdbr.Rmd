@@ -1,0 +1,171 @@
+---
+title: "Topic 1-03: Get pathways from MSigDB"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+## The .gmt data format for gene sets
+
+MSigDB defines a simple `.gmt` format for storing gene sets. It has the following format:
+
+```
+gene_set_1  gene_set_description    gene1   gene2   gene3
+gene_set_2  gene_set_description    gene4   gene5
+...
+```
+
+The `.gmt` format is used more and more for sharing gene set data, e.g. https://maayanlab.cloud/Enrichr/#libraries.
+
+
+Let's try to read a `.gmt` file. We use the `.gmt` file for the Hallmark gene set.
+
+```{r}
+download.file("https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2023.2.Hs/h.all.v2023.2.Hs.symbols.gmt",
+  destfile = "h.all.v2023.2.Hs.symbols.gmt")
+```
+
+Since it is not a table, we have to read the file by lines.
+
+```{r}
+ln = readLines("h.all.v2023.2.Hs.symbols.gmt")
+ln = strsplit(ln, "\t")
+gs = lapply(ln, function(x) x[-(1:2)])
+names(gs) = sapply(ln, function(x) x[1])
+gs[1:2]
+```
+
+```{r, echo = FALSE}
+invisible(file.remove("h.all.v2023.2.Hs.symbols.gmt"))
+```
+
+
+## The msigdbr package
+
+There is already an R package **msigdbr** which has integerated all MSigDB gene sets.
+
+```{r, message = FALSE}
+library(msigdbr)
+```
+
+The major advantage is, MSigDB only supports human and mouse, **msigdbr** supports
+more organisms by mapping to the orthologe genes.
+
+```{r}
+msigdbr_species()
+```
+
+
+All categories of gene sets:
+
+```{r}
+as.data.frame(msigdbr_collections())
+```
+
+Values in the `gs_cat` column and the `gs_subcat` column can be used to retrieve gene sets
+in a specific category.
+E.g., we want to extract genesets in C2 category and CP:KEGG sub-category:
+
+```{r}
+gene_sets = msigdbr(category = "C2", subcategory = "CP:KEGG")
+gene_sets
+```
+
+If you don't like the `tibble` format, you can change it to a data frame.
+
+```{r}
+gene_sets = as.data.frame(gene_sets)
+head(gene_sets)
+```
+
+<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    background: #eee;
+    border-left: 6px #CCCCCC solid;
+}
+</style>
+
+
+> **Danger zone:** The `entrez_gene` column is saved in integer. This may cause unseeable problems.
+> Convert it explicitely to character: `gene_set$entrez_gene = as.character(gene_set$entrez_gene)`.
+
+Another advantage of **misgdbr** is that it provides all three major gene ID types.
+For example, if you need Ensembl gene IDs, you can obtain the gene sets by:
+
+```{r}
+gene_sets[, c("gs_name", "ensembl_gene")] |> head()
+```
+
+By default it retrieves data for human. The `species` argument can be used for other supported species.
+
+```{r}
+gene_sets = msigdbr(species = "dog", category = "C2", subcategory = "CP:BIOCARTA")
+gene_sets = as.data.frame(gene_sets)
+head(gene_sets)
+```
+
+
+## A safer check
+
+The table contains mappings between gene sets and all the three gene ID types. Since Symbol-EntreZ-Ensembl mapping is not 1:1, it is possible rows are duplicated if only taking
+two columns from the complete table:
+
+```{r}
+gene_sets = msigdbr(category = "C5", subcategory = "GO:BP")
+
+tb = gene_sets[, c("gs_name", "gene_symbol")]
+dim(tb)
+dim(unique(tb))
+```
+
+
+So, additionally applying `unique()` is always safe.
+
+## Functions in the GSEAtraining package
+
+We also have several functions in **GSEAtraining** to retrieve gene sets from MSigDB.
+It directly downloads data from MSigDB web server.
+
+```{r}
+list_msigdb_versions()
+list_msigdb_collections("2023.2.Hs")
+lt = get_msigdb(version = "2023.2.Hs", collection = "h.all")
+lt[1:2]
+```
+
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+The gene set resource on https://maayanlab.cloud/Enrichr/#libraries is very useful. You may
+want to use it some say in the future. Take one gene set collection (e.g. the COVID-19 related gene sets), download the corresponding gene set file (in `.gmt` format) and try to read into R as a list.
+
+#### Solution
+
+
+```{r}
+download.file("https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=COVID-19_Related_Gene_Sets", destfile = "covid-19.gmt")
+ln = readLines("covid-19.gmt")
+ln = strsplit(ln, "\t")
+gs = lapply(ln, function(x) x[-(1:2)])
+names(gs) = sapply(ln, function(x) x[1])
+gs[1:2]
+```
+
+
+```{r, echo = FALSE}
+invisible(file.remove("covid-19.gmt"))
+```

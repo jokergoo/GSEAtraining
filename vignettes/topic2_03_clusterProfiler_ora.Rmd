@@ -1,0 +1,235 @@
+---
+title: "Topic 2-03: Use clusterProfiler for ORA"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+Let's start with a vector of DE genes:
+
+```{r}
+lt = readRDS(system.file("extdata", "ora.rds", package = "GSEAtraining"))
+diff_gene = lt$diff_gene
+bg_gene = lt$bg_gene
+head(diff_gene)
+```
+
+Load the **clusterProfiler** package.
+
+```{r, message=FALSE}
+library(clusterProfiler)
+```
+
+**clusterProfiler** supports several major gene ID types in the input, but it is suggested
+to use Entrez IDs as the input because it is the "central gene ID type" in many databases/datasets.
+
+We convert `diff_gene` to Entrez IDs. Note some genes may be lost 
+due to the conversion.
+
+```{r}
+diff_gene = convert_to_entrez_id(diff_gene)
+head(diff_gene)
+length(diff_gene)
+```
+
+Next we perform ORA on different gene set sources.
+
+## GO enrichment
+
+```{r, message = FALSE}
+library(org.Hs.eg.db)
+tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+head(tb)
+```
+
+## KEGG enrichment
+
+
+```{r, message = FALSE}
+tb = enrichKEGG(gene = diff_gene, organism = "hsa")
+head(tb)
+```
+
+## Reactome enrichment
+
+```{r}
+library(ReactomePA)
+tb = enrichPathway(gene = diff_gene, organism = "human")
+head(tb)
+```
+
+## DO enrichment
+
+```{r}
+library(DOSE)
+tb = enrichDO(gene = diff_gene, ont = "DO")
+head(tb)
+```
+
+## MSigDB enrichment
+
+There is no built-in function specific for MSigDB gene sets, but there is a universal function `enricher()` which accepts
+manually-specified gene sets. The gene sets object is simply a two-column data frame:
+
+- the first column is the gene set ID
+- the second column is the gene ID
+
+```{r}
+library(msigdbr)
+gene_sets = msigdbr(category = "H")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+head(map)
+
+tb = enricher(gene = diff_gene, TERM2GENE = map)
+head(tb)
+```
+
+## Setting background
+
+Note, in **clusterProfiler**, the background is intersect(all genes in the gene sets, user's background genes).
+
+```{r}
+bg_gene = convert_to_entrez_id(bg_gene)
+bg_gene = sample(bg_gene, 10000)
+tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db, universe = bg_gene)
+head(tb)
+```
+
+We can compare ORA with different backgrounds:
+
+```{r}
+tb1 = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+tb2 = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db, universe = bg_gene)
+
+tb1 = tb1@result
+tb2 = tb2@result
+cn = intersect(tb1$ID, tb2$ID)
+
+plot(tb1[cn, "pvalue"], tb2[cn, "pvalue"], log = "xy",
+	xlim = c(1e-25, 1), ylim = c(1e-25, 1),
+	xlab = "default background", ylab = "self-defined background")
+```
+
+Or overlap between the significant GO terms:
+
+```{r}
+library(eulerr)
+plot(euler(list("default_background" = tb1$ID[tb1$p.adjust < 0.05],
+	            "bg_gene" = tb2$ID[tb2$p.adjust < 0.05])),
+    quantities = TRUE)
+```
+
+## Example for other organism
+
+1. GO enrichment
+
+`enrichGO()` accepts an `OrgDb` object as the source of the GO gene sets.
+We take pig as an example.
+
+```{r}
+library(org.Ss.eg.db)
+diff_gene = random_genes(org.Ss.eg.db, 1000, "ENTREZID")
+```
+
+
+```{r, message = FALSE}
+tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Ss.eg.db, 
+	pvalueCutoff = 1, qvalueCutoff = 1)
+head(tb)
+```
+
+
+2. KEGG enrichment
+
+The KEGG code of a specific organism can be found at https://rest.kegg.jp/list/organism
+
+```{r, message = FALSE}
+tb = enrichKEGG(gene = diff_gene, organism = "ssc", pvalueCutoff = 1, qvalueCutoff = 1)
+head(tb)
+```
+
+3. MSigDB
+
+Use `msigdbr::msigdbr_species()` to see which organisms are supported.
+
+```{r}
+gene_sets = msigdbr(species = "pig", category = "H")
+map = gene_sets[, c("gs_name", "entrez_gene")]
+map$entrez_gene = as.character(map$entrez_gene)
+
+tb = enricher(gene = diff_gene, TERM2GENE = map, pvalueCutoff = 1, qvalueCutoff = 1)
+head(tb)
+```
+
+## Examples for less well-studied organisms
+
+Taking dolphin as an example. 
+
+```{r}
+library(AnnotationHub)
+ah = AnnotationHub()
+org_db = ah[["AH112418"]]
+gs = get_GO_gene_sets_from_orgdb(org_db, "BP", as_table = TRUE)
+
+diff_gene = random_genes(org_db, 1000, "ENTREZID")
+tb = enricher(diff_gene, TERM2GENE = gs[, 2:1], pvalueCutoff = 1, qvalueCutoff = 1)
+head(tb)
+```
+
+And we can add GO full names to the table:
+
+```{r}
+library(GO.db)
+tb = tb@result
+tb$Name = Term(GOTERM[tb$ID])
+head(tb)
+```
+
+or 
+
+```{r, eval = FALSE}
+enricher(diff_gene, TERM2GENE = gs[, 2:1], TERM2NAME = toTable(GOTERM)[, 2:3],
+	pvalueCutoff = 1, qvalueCutoff = 1)
+```
+
+
+Since `org_db` is an `OrgDb` object, we can directly use `enrichGO()`:
+
+```{r}
+tb = enrichGO(diff_gene, ont = "BP", OrgDb = org_db, 
+	pvalueCutoff = 1, qvalueCutoff = 1)
+```
+
+## Look at the `tb` object
+
+We used the same variable name `tb` for the object returned by the various enrichment functions. They are all in the same format. It looks like a table, but be careful, it is actually not:
+
+```{r}
+class(tb)
+str(tb)
+```
+
+To convert it into a "real" table, DO NOT use `as.data.frame()` which only returns the significant terms, use `tb@result`.
+
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+Use the DE gene list in `webgestalt_example_gene_list.rds` to perform ORA on
+GO/KEGG/MSigDB gene sets.
+
+```{r}
+genes = readRDS(system.file("extdata", "webgestalt_example_gene_list.rds", 
+	package = "GSEAtraining"))
+```
+

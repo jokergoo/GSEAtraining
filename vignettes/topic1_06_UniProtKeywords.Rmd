@@ -1,0 +1,88 @@
+---
+title: "Topic 1-06: Get gene sets from UniProt Keywords"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+UniProt database provides a list of controlled vocabulary represented as
+keywords for genes or proteins (https://www.uniprot.org/keywords/). This is
+useful for summarizing gene functions in a compact way.
+
+## The UniProtKeywords package
+
+First load the package:
+
+```{r}
+library(UniProtKeywords)
+```
+
+The release and source information of the data:
+
+```{r}
+UniProtKeywords
+```
+
+
+The **UniProtKeywords** package has compiled genesets of keywords for some
+organism, which can get by the function `load_keyword_genesets()`. The argument
+is the taxon ID of a organism. The full set of supported organisms can be found
+in the document of `load_keyword_genesets()` (or in the object `UniProtKeywords:::ORGANISM`).
+
+```{r}
+gl = load_keyword_genesets(9606)
+gl[3:4]  # because gl[1:2] has a very long output, here we print gl[3:4]
+```
+
+You can also use the name of the organism:
+
+```{r, eval = FALSE}
+load_keyword_genesets("human")
+load_keyword_genesets("Homo sapiens")
+```
+
+Argument `as_table` can be set to `TRUE`, then `load_keyword_genesets()` returns a two-column data frame.
+
+```{r}
+tb = load_keyword_genesets(9606, as_table = TRUE)
+head(tb)
+```
+
+## Statistics
+
+We can simply check some statistics.
+
+1. Sizes of keyword genesets:
+
+
+```{r, fig.width = 7, fig.height = 5}
+plot(table(sapply(gl, length)), log = "x", 
+    xlab = "Size of keyword genesets",
+    ylab = "Number of keywords"
+)
+```
+
+2. Numbers of words in keywords:
+
+```{r, fig.width = 7, fig.height = 5}
+plot(table(sapply(gregexpr(" |-|/", names(gl)), length)), 
+    xlab = "Number of words in keywords",
+    ylab = "Number of keywords"
+)
+```
+
+3. Numbers of characters in keywords:
+
+```{r, fig.width = 7, fig.height = 5}
+plot(table(nchar(names(gl))), 
+    xlab = "Number of characters in keywords",
+    ylab = "Number of keywords"
+)
+```

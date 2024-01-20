@@ -1,0 +1,21 @@
+Package: GSEAtraining
+Type: Package
+Title: Training materials for the GSEA course
+Version: 0.99.0
+Date: 2024-01-17
+Authors@R: person("Zuguang", "Gu", email = "z.gu@dkfz.de", role = c("aut", "cre"),
+                  comment = c('ORCID'="0000-0002-7395-8709"))
+Depends: R (>= 4.1.0)
+Imports: stats, DBI, DT, RSQLite, htmltools, shiny, AnnotationDbi, matrixStats
+Suggests: knitr, rmarkdown, GO.db, org.Hs.eg.db, KEGGREST, clusterProfiler, msigdbr,
+    reactome.db, BioCartaImage, UniProtKeywords, BioMartGOGeneSets, AnnotationHub,
+    BiocHubsShiny, Orthology.eg.db, microbenchmark, ReactomePA, DOSE, org.Ss.eg.db,
+    CePa, eulerr, rGREAT, goseq, GSVA, simplifyEnrichment, simona, enrichplot, ggplot2
+VignetteBuilder: knitr
+Description: The training materials in this package are only allowed for noncommercial use.
+URL: https://github.com/jokergoo/GSEAtraining
+BugReports: https://github.com/jokergoo/GSEAtraining/issues
+License: CC BY-NC-SA
+RoxygenNote: 7.2.3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)

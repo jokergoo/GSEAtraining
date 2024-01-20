@@ -1,0 +1,133 @@
+---
+title: "Topic 4-02: GSVA"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+## GSVA
+
+We need an expression matrix as well as a collection of gene sets.
+
+```{r}
+lt = readRDS(system.file("extdata", "p53_expr.rds", package = "GSEAtraining"))
+expr = lt$expr
+condition = lt$condition
+
+ln = strsplit(readLines(system.file("extdata", "c2.symbols.gmt", package = "GSEAtraining")), "\t")
+gs = lapply(ln, function(x) x[-(1:2)])
+names(gs) = sapply(ln, function(x) x[1])
+```
+
+Running **GSVA** analysis is simple. Just note the gene IDs in `expr` should match the gene IDs in `gs`.
+
+The returned value `gs_mat` is a set-sample matrix that contains "single sample-based gene set variation scores".
+
+```{r}
+library(GSVA)
+gs_mat = gsva(expr, gs, verbose = FALSE)
+dim(gs_mat)
+```
+
+
+`gs_mat` can be used for downstream analysis. E.g. make heatmaps:
+
+
+```{r, message = FALSE}
+library(ComplexHeatmap)
+Heatmap(gs_mat, top_annotation = HeatmapAnnotation(cond = condition),
+    column_split = condition)
+```
+
+
+Apply t-test on each row of `gs_mat` to test whether the gene set-level
+profile has difference between the two conditions.
+
+```{r, message=FALSE}
+library(genefilter)
+tdf = rowttests(gs_mat, factor(condition))
+tdf$fdr = p.adjust(tdf$p.value, "BH")
+```
+
+How many gene sets are significant?
+
+```{r}
+tdf[tdf$fdr < 0.05, ]
+```
+
+## Compare to normal GSEA
+
+As a comparison, we also perform a normal GSEA analysis. We use the t-value as the gene-level score:
+
+```{r}
+s = rowttests(expr, factor(condition))[, "statistic"]
+names(s) = rownames(expr)
+```
+
+Here we also test to the c2 gene set collection, so we need to convert `gs` to the format **clusterProfiler** accepts:
+
+```{r, message = FALSE}
+map = data.frame(
+    gene_set = rep(names(gs), times = sapply(gs, length)),
+    gene = unlist(gs)
+)
+    
+library(clusterProfiler)
+tb = GSEA(geneList = sort(s, decreasing = TRUE), TERM2GENE = map, pvalueCutoff = 1)
+head(tb)
+```
+
+
+Let's check the expression of genes in the p53Pathway:
+
+```{r}
+g = intersect(gs[["p53Pathway"]], rownames(expr))
+mm = expr[g, ]
+mm = t(scale(t(mm)))  # z-score transformation
+
+Heatmap(mm, name = "z-score", top_annotation = HeatmapAnnotation(cond = condition),
+    column_title = "p53Pathway",
+    right_annotation = rowAnnotation(bar = anno_barplot(s[g], axis_param = list(direction = "reverse"), width = unit(2, "cm"))),
+    column_split = condition) %v%
+Heatmap(gs_mat["hivnefPathway", , drop = FALSE], name = "set variation",
+    col = circlize::colorRamp2(c(-1, 0, 1), c("green", "yellow", "red")))
+```
+
+Next we make pairwise scatterplot of p-values and statistics for both analysis.
+
+```{r, fig.width = 10, fig.height = 5}
+cn = intersect(rownames(tdf), tb$ID)
+par(mfrow = c(1, 2))
+plot(tdf[cn, "p.value"], tb[cn, "pvalue"],
+    xlab = "GSVA", ylab = "normal GSEA", main = "p-values")
+plot(tdf[cn, "statistic"], tb[cn, "NES"],
+    xlab = "GSVA / t-values", ylab = "normal GSEA / NES")
+```
+
+This makes a problem here that one method generates a significant gene set
+which can be completely insignificant under another method (left plot). The
+direction of the general differentiation of a gene set can be reversed in
+different methods.
+
+```{r}
+g = intersect(gs[["hivnefPathway"]], rownames(expr))
+mm = expr[g, ]
+mm = t(scale(t(mm)))  # z-score transformation
+
+Heatmap(mm, name = "z-score", top_annotation = HeatmapAnnotation(cond = condition),
+    right_annotation = rowAnnotation(bar = anno_barplot(s[g], axis_param = list(direction = "reverse"), width = unit(2, "cm"))),
+    column_split = condition) %v%
+Heatmap(gs_mat["hivnefPathway", , drop = FALSE], name = "set variation",
+    col = circlize::colorRamp2(c(-1, 0, 1), c("green", "yellow", "red")))
+```
+
+
+**Conclusion**: It does not seem ssGSEA is better than GSEA. Use with caution.
+

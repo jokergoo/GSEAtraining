@@ -1,0 +1,138 @@
+---
+title: "Topic 3-03: GOseq"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+The input of **goseq** is very simple. It only needs a named binary vector with values 0 or 1,
+where 1 means the gene is a DE gene. 
+
+## Remove not-expressed genes
+
+If the first try, we read the DE results from `de.rds`, remove genes have no p-values (mainly not expressed genes or very lowly-expressed genes), and construct the binary vector.
+
+```{r}
+tb = readRDS(system.file("extdata", "de.rds", package = "GSEAtraining"))
+tb = tb[tb$symbol != "", ]  # keep pc genes
+tb = tb[!is.na(tb$p_value), ]
+tb$fdr = p.adjust(tb$p_value, "BH")
+
+genes = ifelse(tb$fdr < 0.05, 1, 0)
+names(genes) = tb$ensembl
+head(genes)
+table(genes)
+```
+
+The key assumption of **goseq** is a gene being DE is biased by its length.
+The distribution of $p_\mathrm{DE}$ against gene length can be estimated by `nullp()`. (Em.. this distribution looks different from the one in the original paper)
+
+```{r, message = FALSE}
+library(goseq)
+pwf = nullp(genes, "hg19", "ensGene")
+```
+
+Then use `goseq()` function to perform the test by correcting the "gene length bias":
+
+```{r, message = FALSE}
+tb1 = goseq(pwf, "hg19", "ensGene")
+head(tb1)
+```
+
+## Keep all genes
+
+This time we keep the genes with p-values as `NA` (they are basically genes not expressed).
+We simply assume they are not DE.
+
+```{r}
+tb = readRDS(system.file("extdata", "de.rds", package = "GSEAtraining"))
+tb = tb[tb$symbol != "", ]  # keep pc genes
+
+tb$fdr = p.adjust(tb$p_value, "BH")
+genes = ifelse(tb$fdr < 0.05, 1, 0)
+genes[is.na(genes)] = 0
+names(genes) = tb$ensembl
+table(genes)
+```
+
+Let's check the "bias distribution" again.
+
+```{r}
+pwf = nullp(genes, "hg19", "ensGene")
+```
+
+This becomes interesting. It shows a reverse pattern as in the original paper. Note many lowly-expressed genes are short, so the increasing trend in the left part of the curve is from
+the proportion of "expressed genes" getting higher? Or can we say actually there is no such bias
+as mentioned in the goseq paper?
+
+We perform the test:
+
+```{r, message = FALSE}
+tb2 = goseq(pwf, "hg19", "ensGene")
+```
+
+## Compare tb1 and tb2
+
+We compare `tb1` and `tb2`:
+
+```{r}
+library(eulerr)
+lt = list(
+    test1 = tb1$category[p.adjust(tb1$over_represented_pvalue, "BH") < 0.05], 
+    test2 = tb2$category[p.adjust(tb2$over_represented_pvalue, "BH") < 0.05]
+)
+plot(euler(lt), quantities = TRUE)
+```
+
+Does it mean the correction has no effect?
+
+## Compare to ORA
+
+We also compare to ORA.
+
+```{r}
+l = tb$fdr < 0.05; l[is.na(l)] = FALSE
+diff_gene = tb$ensembl[l]
+```
+
+`diff_gene` are Ensembl IDs. We convert them to Entrez IDs:
+
+```{r}
+diff_gene = convert_to_entrez_id(diff_gene)
+```
+
+We use **clusterProfiler** to perform ORA analysis:
+
+
+```{r, message = FALSE}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+tb3 = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+```
+
+Now we compare ORA to GOseq results. Note `tb1` and `tb2` contains results for all three ontologies (BP, CC, MF). Here
+we only need BP.
+
+```{r}
+tb1 = tb1[tb1$ontology == "BP", ]
+tb2 = tb2[tb2$ontology == "BP", ]
+
+library(eulerr)
+lt = list(
+    test1 = tb1$category[p.adjust(tb1$over_represented_pvalue, "BH") < 0.05], 
+    test2 = tb2$category[p.adjust(tb2$over_represented_pvalue, "BH") < 0.05],
+    ora = tb3$ID[p.adjust(tb3$pvalue, "BH") < 0.05]
+)
+plot(euler(lt), quantities = TRUE)
+```
+
+
+**Conclusion**: **goseq** was designed when the Possion distribution was used for DE analysis and
+maybe it does not help nowadays when more advanced DE methods are used.

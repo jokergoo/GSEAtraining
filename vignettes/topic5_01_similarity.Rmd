@@ -1,0 +1,210 @@
+---
+title: "Topic 5-01: Similarities of terms"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+There are two types of methods to calculate similarities between functional terms.
+
+- purely based on the number of member genes.
+- based on the topology of the ontology.
+
+
+We demonstrate it with significant terms from an ORA analysis.
+
+```{r}
+lt = readRDS(system.file("extdata", "ora.rds", package = "GSEAtraining"))
+diff_gene = lt$diff_gene
+diff_gene = convert_to_entrez_id(diff_gene)
+```
+
+## Similarity based on gene counts
+
+First we use a small collection of gene sets, the KEGG pathways.
+
+```{r}
+df = read.table(url("https://rest.kegg.jp/link/pathway/hsa"), sep = "\t")
+df[, 1] = gsub("hsa:", "", df[, 1])
+df[, 2] = gsub("path:",  "", df[, 2])
+head(df)
+```
+
+We also retrieve the pathway names.
+
+```{r}
+pathway_names = read.table(url("https://rest.kegg.jp/list/pathway/hsa"), sep = "\t")
+pathway_names = structure(gsub(" - Homo .*$", "", pathway_names[, 2]), names = pathway_names[, 1])
+```
+
+Perform ORA analysis with **clusterProfiler**. There are 33 significant pathways.
+
+```{r}
+library(clusterProfiler)
+tb = enricher(diff_gene, TERM2GENE = df[, 2:1])
+sig_pathways = as.data.frame(tb)$ID
+
+gs_pathway = split(df[, 1], df[, 2])
+gs_pathway = gs_pathway[sig_pathways]
+```
+
+There are four similarity methods which are based on the counts:
+
+- Jaccard coeffcient
+- Dice coeffcient
+- Overlap coeffcient
+- Kappa coeffcient
+
+Since Dice coeffcient is just a simple transformation from the Jaccard coeffcient, we only
+look at the following three methods:
+
+
+```{r}
+library(simplifyEnrichment)
+m1 = term_similarity(gs_pathway, method = "jaccard")
+m2 = term_similarity(gs_pathway, method = "overlap")
+m3 = term_similarity(gs_pathway, method = "kappa")
+```
+
+Values on diagonals of the three symmetric matrices are 1. Since other values in the matrices
+are much smaller than 1, we set the diagonals to NA to improve the heatmap visualization.
+
+```{r, fig.width = 10, fig.height = 7}
+diag(m1) = NA
+diag(m2) = NA
+diag(m3) = NA
+
+library(ComplexHeatmap)
+Heatmap(m1, name = "jaccard") + 
+    rowAnnotation(pathway_name = anno_text(pathway_names[rownames(m1)]))
+Heatmap(m2, name = "overlap") + 
+    rowAnnotation(pathway_name = anno_text(pathway_names[rownames(m1)]))
+Heatmap(m3, name = "kappa") + 
+    rowAnnotation(pathway_name = anno_text(pathway_names[rownames(m1)]))
+```
+
+In previous examples, we use all genes in the gene sets. Next we restrict only
+to the DE genes.
+
+```{r, fig.width = 10, fig.height = 7}
+m1 = term_similarity(gs_pathway, method = "jaccard", all = diff_gene)
+m2 = term_similarity(gs_pathway, method = "overlap", all = diff_gene)
+m3 = term_similarity(gs_pathway, method = "kappa", all = diff_gene)
+
+diag(m1) = NA
+diag(m2) = NA
+diag(m3) = NA
+
+Heatmap(m1, name = "jaccard") + 
+    rowAnnotation(pathway_name = anno_text(pathway_names[rownames(m1)]))
+Heatmap(m2, name = "overlap") + 
+    rowAnnotation(pathway_name = anno_text(pathway_names[rownames(m1)]))
+Heatmap(m3, name = "kappa") + 
+    rowAnnotation(pathway_name = anno_text(pathway_names[rownames(m1)]))
+```
+
+Next we use a much larger gene set collection: the GO gene sets:
+
+```{r}
+library(org.Hs.eg.db)
+tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db)
+
+sig_go = as.data.frame(tb)$ID
+```
+
+There are > 800 significant GO BP terms.
+
+```{r}
+gs_bp = get_GO_gene_sets_from_orgdb(org.Hs.eg.db)
+gs_bp = gs_bp[sig_go]
+```
+
+```{r}
+m1 = term_similarity(gs_bp, method = "jaccard")
+m2 = term_similarity(gs_bp, method = "overlap")
+m3 = term_similarity(gs_bp, method = "kappa")
+
+diag(m1) = NA
+diag(m2) = NA
+diag(m3) = NA
+
+Heatmap(m1, name = "jaccard", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+Heatmap(m2, name = "overlap", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+Heatmap(m3, name = "kappa", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+```
+
+Or only restrict in DE genes
+
+```{r}
+m1 = term_similarity(gs_bp, method = "jaccard", all = diff_gene)
+m2 = term_similarity(gs_bp, method = "overlap", all = diff_gene)
+m3 = term_similarity(gs_bp, method = "kappa", all = diff_gene)
+
+diag(m1) = NA
+diag(m2) = NA
+diag(m3) = NA
+
+Heatmap(m1, name = "jaccard", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+Heatmap(m2, name = "overlap", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+Heatmap(m3, name = "kappa", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+```
+
+## Semantic similarity based on ontology structures
+
+There are also two major types of methods for semantic similarities.
+
+- based on external gene annotations
+- based on internal topology structure
+
+### Based on gene annotation
+
+
+```{r, echo = FALSE}
+library(simona)
+simona_opt$verbose = FALSE
+```
+
+```{r}
+dag = create_ontology_DAG_from_GO_db("BP", org_db = org.Hs.eg.db)
+```
+
+The _Sim_Lin_1998_ is one of the classic semantic similarity method.
+
+```{r}
+m = term_sim(dag, sig_go, method = "Sim_Lin_1998")
+diag(m) = NA
+Heatmap(m, name = "Sim_Lin_1998", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+```
+
+### Purely based on the topology
+
+The _Sim_WP_1994__ is one of the classic semantic similarity method.
+
+
+```{r}
+m = term_sim(dag, sig_go, method = "Sim_WP_1994")
+diag(m) = NA
+Heatmap(m, name = "Sim_WP_1994", show_row_names = FALSE, show_column_names = FALSE,
+    show_row_dend = FALSE, show_column_dend = FALSE)
+```
+
+### Visualize the ontology
+
+```{r, fig.width = 10, fig.height = 7}
+dag_circular_viz(dag, highlight = sig_go)
+```

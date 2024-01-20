@@ -1,0 +1,171 @@
+---
+title: "Topic 1-08: Generate gene sets for other organisms by mapping to orthologues"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+In the Bioconductor ecosystem, there are already a huge number of gene set resources for a large number of organisms. However, there can still be cases where a poor-studied organism does not have a well-annotated gene set resource. Human, of course, is the most studied organism and it has the richest annotation resources. For other organisms, we can built similar gene sets by mapping to orthologues to human genes.
+
+The hallmark gene sets is a useful resource for exploring the biological functions. But natively, MSigDB only provides data for human and mouse, but still a large number of other organisms are missing. In the following part of this section, I will demonstrate how to construct hallmark gene sets for the great panda.
+
+## The Orthology.eg.db package
+
+Let me first demonstrate how to obtain the mapping from human genes to panda genes. In Biocoductor, there is a standard package **Orthology.eg.db** which provides orthologue mappings for hundreds of organisms. Let’s first load the package.
+
+```{r}
+library(Orthology.eg.db)
+```
+
+
+Similarly, there is a database object `Orthology.eg.db` which has the same name as the package.
+
+```{r}
+Orthology.eg.db
+```
+
+
+The orthology database can be thought as a table where columns are different organisms, and rows are groups of orthologues genes. All supported organisms can be obtained by the function `columns()`.
+
+```{r}
+cl = columns(Orthology.eg.db)
+length(cl)
+head(cl)
+```
+
+The column names correspond to organism’s Latin names, separated by a dot character. Remember to use the `select()`interface, we also need to check which column can be used for the keys. In `Orthology.eg.db`, all columns can be used as key columns, which means, we can map between any two organisms We can valiadte it by:
+
+```{r}
+kt = keytypes(Orthology.eg.db)
+identical(cl, kt)
+```
+
+We check whether the panda organism is supported in `Orthology.eg.db` by searching its Latin name `"Ailuropoda melanoleuca"`.
+
+```{r}
+kt[grep("Ailuropoda", kt, ignore.case = TRUE)]
+```
+
+Yes, it is supported. For converting between two types of IDs, I will first create a global mapping vector, where human genes are the names of the vector and panda genes are the values.
+
+I first extract all the human genes, which will be the primary keys for the orthology mapping. Remember the value for keytype argument should be a valid value in `keytypes(Orthology.eg.db)`.
+
+```{r}
+keys = keys(Orthology.eg.db, keytype = "Homo.sapiens")
+head(keys)
+```
+
+The keys are in EntreZ ID type.
+
+
+Now we can apply `select()` function on the `Orthology.eg.db` database object and generate the mapping.
+
+```{r}
+map_df = select(Orthology.eg.db, keys, 
+    columns = "Ailuropoda.melanoleuca", keytype = "Homo.sapiens")
+head(map_df)
+```
+
+
+Now `map_df` is a two-column data frame where the first column includes the genes for human and the second column includes genes for panda. If there is no orthologue mapping, the corresponding value for panda is `NA`. We see the gene IDs are integers, but what is exactly the ID type of it? We have to go through the documentation of the Orthology.eg.db package, it tells the internal IDs are Entrez IDs.
+
+<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    background: #eee;
+    border-left: 6px #CCCCCC solid;
+}
+</style>
+
+> **Danger zone:** Entrez IDs should not be saved as integers!
+
+Before we move on, we have to double check how Entrez IDs are saved in `map_df`.
+
+```{r}
+class(map_df[, 1])
+class(map_df[, 2])
+```
+
+Unfortunately they are in integer mode, we have to convert them to characters.
+
+```{r}
+map_df[, 1] = as.character(map_df[, 1])
+map_df[, 2] = as.character(map_df[, 2])
+```
+
+Now we can safely constrcut the mapping vector where human genes are names and panda genes are values.
+
+```{r}
+map_vec = structure(map_df[, 2], names = map_df[, 1])
+# or we can do it in two lines
+map_vec = map_df[, 2]
+names(map_vec) = map_df[, 1]
+
+head(map_vec)
+```
+
+We have the mappings from human to panda, now we can construct the hallmark gene sets for panda. First let’s obtain the hallmark gene sets for human. The `get_msigdb()` function is from the GSEAbook package.
+
+```{r}
+gs_human = get_msigdb(version = "2023.2.Hs", collection = "h.all")
+```
+
+Next we perform the conversion by providing the human genes are character indicies. Note if the human gene is not mapped to panda gene, the corresponding value will be `NA`, which we need to remove it. Using the `unname()` function is optional. The reason is `x2` is constructed from `map_vec` which has names attached. Here I removed the name attributes of `x2` to make `gs_panda` easy to read.
+
+```{r}
+gs_panda = lapply(gs_human, function(x) {
+    x2 = map_vec[x]
+    unname(x2[!is.na(x2)])
+})
+```
+
+
+And finally to remove empty gene sets. Now `gs_panda` contains hallmark gene sets for panda.
+
+```{r}
+gs_panda = gs_panda[sapply(gs_panda, length) > 0]
+gs_panda[1:2]
+```
+
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+Construct hallmark gene sets for dolphin (latin name: Tursiops truncatus)
+
+#### Solution
+
+First check whether it is supported in **Orthology.eg.db**.
+
+```{r}
+kt[grep("Tursiops", kt, ignore.case = TRUE)]
+```
+
+```{r}
+map_df = select(Orthology.eg.db, keys, 
+    columns = "Tursiops.truncatus", keytype = "Homo.sapiens")
+map_df[, 1] = as.character(map_df[, 1])
+map_df[, 2] = as.character(map_df[, 2])
+
+map_vec = structure(map_df[, 2], names = map_df[, 1])
+
+gs_dolphin = lapply(gs_human, function(x) {
+    x2 = map_vec[x]
+    unname(x2[!is.na(x2)])
+})
+gs_dolphin = gs_dolphin[sapply(gs_dolphin, length) > 0]
+gs_dolphin[1:2]
+```

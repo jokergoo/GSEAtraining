@@ -1,0 +1,57 @@
+---
+title: "Topic 1-05: Get pathways from BioCarta"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+[BioCarta](https://web.archive.org/web/20170122225118/https://cgap.nci.nih.gov/Pathways/BioCarta_Pathways) is a valuable source of biological pathways which not only provides well manually curated pathways, but also remarkable and intuitive pathway images.
+
+## The BioCartaImage package
+
+The **BioCartaImage** is mainly for customizing BioCarta pathway images, but of source it contains gene sets for BioCarta pathways.
+
+```{r}
+library(BioCartaImage)
+head(PATHWAY2ENTREZ)
+```
+
+The full name of pathways:
+
+```{r}
+pathway_names = sapply(BIOCARTA_PATHWAYS, function(x) x$name)
+head(pathway_names)
+```
+
+
+### Highlight genes on the pathway image
+
+```{r}
+library(grid)
+grid.newpage()
+grid.biocarta("h_RELAPathway", color = c("1387" = "yellow"))
+```
+
+
+Add more complicated graphics:
+
+```{r}
+grob = biocartaGrob("h_RELAPathway")
+grob2 = mark_gene(grob, "1387", function(x, y) {
+    pos = pos_by_polygon(x, y)
+    pushViewport(viewport(x = pos[1] - 10, y = pos[2], 
+        width = unit(4, "cm"), height = unit(4, "cm"), 
+        default.units = "native", just = "right"))
+    grid.rect(gp = gpar(fill = "red"))
+    grid.text("add whatever\nyou want here")
+    popViewport()
+}, capture = TRUE)
+grid.draw(grob2)
+```

@@ -1,0 +1,95 @@
+---
+title: "Topic 1-04: Get pathways from Reactome"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+Reactome is another popular pathway database. It organises pathways in a
+hierarchical manner, which contains pathways and sub pathways or pathway
+components. The up-to-date pathway data can be direclty found at
+https://reactome.org/download-data.
+
+
+## reactome.db
+
+There is a **reactome.db** on Bioconductor. 
+
+The version of the data:
+
+```{r}
+library(reactome.db)
+reactome.db
+```
+
+
+In it, the important objects are 
+
+- `reactomePATHID2EXTID` contains mappings between reacotme pathway IDs and gene entrez IDs
+- `reactomePATHID2NAME` contains pathway names
+
+```{r}
+library(reactome.db)
+tb = toTable(reactomePATHID2EXTID)
+head(tb)
+p2n = toTable(reactomePATHID2NAME)
+head(p2n)
+```
+
+In the previous code, we use the function `toTable()` to retrieve the data as data frames. You can also try `as.list()` on the two objects and compare the output.
+
+Reactome also contains pathway for multiple organisms. In the reactome ID, teh second section contains the organism, e.g. in previous output `HSA`. 
+
+```{r}
+sort(table( gsub("^R-(\\w+)-\\d+$", "\\1", p2n[, 1]) ))
+```
+
+ 
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+Make the distribution of the numbers of genes in Reactome pathways (use human). 
+
+Print the names of pathways with numbers of genes > 2000.
+
+#### Solution
+
+```{r}
+tb = toTable(reactomePATHID2EXTID)
+tb = tb[grep("-HSA-", tb[, 1]), ]
+n_gene = table(tb[, 1])
+hist(n_gene)
+```
+
+Making the intervals smaller is better:
+
+```{r}
+hist(n_gene, nc = 100)
+```
+
+Pathways more more than 2000 genes:
+
+```{r}
+n_gene[n_gene > 2000]
+```
+
+Their names:
+
+```{r}
+p2n = toTable(reactomePATHID2NAME)
+p2n[p2n[, 1] %in% names(n_gene[n_gene > 2000]), ]
+```
+
+
+If you go to https://reactome.org/PathwayBrowser/, these big pathways correspond to the pathway clusters on the top level.

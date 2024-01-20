@@ -1,0 +1,119 @@
+---
+title: "Topic 3-01: Online GREAT analysis"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+We first read the peaks as a data frame.
+
+```{r}
+bed = read.table(system.file("extdata", "mm9_chipseq_peaks.bed", package = "GSEAtraining"))
+head(bed)
+dim(bed)
+```
+
+## Directly on the GREAT website
+
+URL: https://great.stanford.edu/great/public/html/index.php
+
+
+## Online GREAT analysis
+
+Use `submitGreatJob()` to submit the regions to GREAT web server. By default
+the species is human (hg19), so here we need to manually set the `species` argument.
+
+Entering the object `job` prints the summary of the job.
+
+```{r, message = FALSE}
+library(rGREAT)
+job = submitGreatJob(bed, species = "mm9")
+job
+```
+
+
+There are several ontologies integrated in GREAT. The total ontologies can be get by:
+
+```{r}
+availableOntologies(job)
+```
+
+By default three GO ontologies are used. More ontologies can be set via the `ontology` argument in `getEnrichmentTables()`.
+
+```{r}
+tbl = getEnrichmentTables(job)
+```
+
+`tb` is a list of three tables and each table contains enrichment results for a GO ontology:
+
+```{r}
+names(tbl)
+head(tbl[["GO Biological Process"]])
+```
+
+The volcano plot is -log10 p-values vs log2 fold enrichment:
+
+```{r}
+plotVolcano(job, ontology = "GO Biological Process")
+```
+
+The global region-gene association plots:
+
+```{r, fig.width = 10}
+plotRegionGeneAssociationGraphs(job)
+```
+
+```{r, fig.width = 10}
+plotRegionGeneAssociations(job, ontology = "GO Molecular Function",
+    term_id = "GO:0004984")
+```
+
+The table of the associations between genes and regions.
+
+```{r}
+getRegionGeneAssociations(job, ontology = "GO Molecular Function",
+    term_id = "GO:0004984")
+```
+
+Try the shiny app:
+
+```{r, eval = FALSE}
+shinyReport(job)
+```
+
+
+## Practice
+
+### {.tabset}
+
+#### Practice 1
+
+
+Perform GREAT analysis on the GREAT website with a list of TFBS from UCSC table browser:
+
+```
+clade: Mammal
+genome: Human
+assembly: GRCh37/hg19
+group: Regulation
+track: ENCODE 3 TFBS
+table: 22Rv1 ZFX (encTfChipRkENCFF445OFX)
+```
+
+In the "output format" field, select "BED - browser extensible data", then click the button "get output". In the next page, click the button "get BED".
+
+
+### {.tabset}
+
+#### Practice 2
+
+Download the regions in practice 1 and perform online GREAT analysis with the **rGREAT** package.
+

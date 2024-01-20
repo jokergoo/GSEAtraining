@@ -1,0 +1,63 @@
+---
+title: "Topic 4-01: CePa"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+## CePa
+
+The **CePa** package has not been updated for ~10 years. I am planning to revisit it
+some time this year. 
+
+
+It will try fix different centralities:
+
+- equal.weight
+- in.degree
+- out.degree
+- node betweenness
+- in.reach
+- out.reach
+
+```{r}
+library(CePa)
+data(PID.db)
+data(gene.list)
+```
+
+`dif` and `bk` are two gene vectors, `pc` is in a special format.
+
+```{r, eval = FALSE}
+# around 5min
+res = cepa.ora.all(dif = gene.list$dif, bk = gene.list$bk, pc = PID.db$NCI)
+```
+
+```{r, echo = FALSE}
+res = readRDS(system.file("extdata", "cepa_res.rds", package = "GSEAtraining"))
+```
+
+Heatmap of adjusted p-values:
+
+```{r}
+plot(res, adj.method = "BH", only.sig = TRUE)
+```
+
+We can see "e2f_pathway" is signinicant with in-degree but not significant with out-degree.
+Let's directly plot the pathway network:
+
+Plot network for a specific pathway under a specific centrality
+
+```{r}
+plot(res, "e2f_pathway", cen = "in.degree")
+plot(res, "e2f_pathway", cen = "out.degree")
+```
+

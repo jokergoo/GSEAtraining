@@ -1,0 +1,506 @@
+---
+title: "Topic 2-04: Implement GSEA from scratch"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+
+In this document, we will implement the two versions of GSEA in R, using the p53 dataset
+also from the GSEA paper.
+
+```{r}
+lt = readRDS(system.file("extdata", "p53_expr.rds", package = "GSEAtraining"))
+expr = lt$expr
+condition = lt$condition
+
+ln = strsplit(readLines(system.file("extdata", "c2.symbols.gmt", package = "GSEAtraining")), "\t")
+gs = lapply(ln, function(x) x[-(1:2)])
+names(gs) = sapply(ln, function(x) x[1])
+
+geneset = gs[["p53hypoxiaPathway"]]
+```
+
+This gene set is very small:
+
+```{r}
+length(geneset)
+```
+
+
+
+Note here gene IDs in the expression matrix and in the gene set are all gene
+symbols, thus no more adjustment needs to be done here.
+
+
+The gene-level difference score is set as signal-to-noise ratios, which is:
+
+- mean in group 1
+- mean in group 2
+- sd in group 1
+- sd in group 2
+
+$$ \frac{\mu_1 - \mu_2}{\sigma_1 + \sigma_2} $$
+
+We calculate the gene-level difference score in `s`:
+
+```{r}
+s = apply(expr, 1, function(x) {
+	x1 = x[condition == "WT"]
+	x2 = x[condition == "MUT"]
+	(mean(x1) - mean(x2))/(sd(x1) + sd(x2))
+})
+```
+
+A faster way to calculate `s` is to use the **matrixStats** packages.
+
+```r
+library(matrixStats)
+m1 = expr[, condition == "WT"]  # only samples in group 1
+m2 = expr[, condition == "MUT"]  # only samples in group 2
+s = (rowMeans(m1) - rowMeans(m2))/(rowSds(m1) + rowSds(m2)) # gene-level difference scores
+```
+
+Sort the gene scores from the highest to the lowest:
+
+```{r}
+s = sort(s, decreasing = TRUE)
+```
+
+## GSEA version 1
+
+### Calculate enrichment score
+
+Next we first implement the original GSEA method, which was proposed in Mootha et al., 2003.
+
+
+We calculate the cummulative probability of a gene being in a gene set $G$. At position $p$ in the
+sorted gene score vector:
+
+$$ f_{1p} = \frac{1}{n_k} \sum_{i=1}^p I(g_i \in G_k) $$
+
+
+```{r}
+## original GSEA
+l_set = names(s) %in% geneset
+f1 = cumsum(l_set)/sum(l_set)
+
+## or
+binary_set = l_set + 0
+f1 = cumsum(binary_set)/sum(binary_set)
+```
+
+Here in the calculatio of `f1`, `sum(l_set)` is $n_k$, `cumsum(l_set)` is $\sum_{i=1}^p I(g_i \in G_k)$.
+
+Similarly, we calculate the cummulative distribution of a gene not in the gene set.
+
+```{r}
+l_other = ! names(s) %in% geneset
+f2 = cumsum(l_other)/sum(l_other)
+```
+
+`f1` and `f2` can be used to plot the CDFs of two distributions.
+
+```{r}
+n = length(s)
+plot(1:n, f1, type = "l", col = "red", xlab = "sorted genes")
+lines(1:n, f2, col = "blue")
+```
+
+The reason why the blue locates almost on the diagonal is the gene set is very small.
+
+Next the difference of cumulative probability (`f1 - f2`) at each position of the sorted gene list.
+Let's call it "the GSEA plot".
+
+```{r}
+plot(f1 - f2, type = "l", xlab = "sorted genes")
+abline(h = 0, lty = 2, col = "grey")
+points(which(l_set), rep(0, sum(l_set)), pch = "|", col = "red")
+```
+
+So, a large value of `f1 - f21` means the genes are more like to be in the gene set for those locating at `1..p`.
+
+The enrichment score (ES) defined as `max(f1 - f2)` is:
+
+```{r}
+es = max(f1 - f2)
+es
+```
+
+And the position in the "GSEA plot":
+
+```{r}
+plot(f1 - f2, type = "l", xlab = "sorted genes")
+abline(h = 0, lty = 2, col = "grey")
+points(which(l_set), rep(0, sum(l_set)), pch = "|", col = "red")
+abline(v = which.max(f1 - f2), lty = 3, col = "blue")
+```
+
+The statistic `es` actually is the Kolmogorov-Smirnov statistics, thus, we can
+directly apply the KS test:
+
+```{r}
+ks.test(which(l_set), which(l_other))
+```
+
+However, we can see the p-value is not significant, this is because KS test is not
+a powerful test. Next we construct the null distribution by sample permutation.
+
+### Sample permutation
+
+In the next code chunk, the calculation of ES score is wrapped into a function,
+also we use `rowMeans()` and `rowSds()` to speed up the calculation of gene-level
+scores.
+
+```{r}
+library(matrixStats)
+# expr: the complete expression matrix
+# condition: the condition labels of samples
+# cmp: a vector of two, cmp[1] - cmp[2] > 0 means up-regulation
+# geneset: A vector of genes
+calculate_es = function(expr, condition, cmp, geneset) {
+
+	m1 = expr[, condition == cmp[1]]  # only samples in group 1
+	m2 = expr[, condition == cmp[2]]  # only samples in group 2
+
+	s = (rowMeans(m1) - rowMeans(m2))/(rowSds(m1) + rowSds(m2)) # a gene-level difference socre (S2N ratio) 
+
+	s = sort(s, decreasing = TRUE)  # ranked gene list
+
+	l_set = names(s) %in% geneset
+	f1 = cumsum(l_set)/sum(l_set)   # CDF for genes in the set
+
+	l_other = !l_set
+	f2 = cumsum(l_other)/sum(l_other)  # CDF for genes not in the set
+
+	max(f1 - f2)
+}
+```
+
+The ES score calculated by `calculate_es()`:
+
+```{r}
+es = calculate_es(expr, condition, cmp = c("WT", "MUT"), geneset = geneset)
+es
+```
+
+We randomly permute sample labels or we randomly permute `condition`. These two ways
+are identical. The aim is to break the association between `condition` and `expr`.
+
+```r
+condition_random = sample(condition)
+expr = expr[, sample(ncol(expr))]
+```
+
+We do sample permutation
+1000 times. The random ES scores are saved in `es_rand`.
+
+```{r}
+set.seed(123)
+es_rand = numeric(1000)
+for(i in 1:1000) {
+	es_rand[i] = calculate_es(expr, sample(condition), 
+	    cmp = c("WT", "MUT"), geneset = geneset)
+}
+```
+
+p-value is calculated as the proportion of values in `es_rand` being equal to or larger than `es`.
+
+```{r}
+sum(es_rand >= es)/1000
+```
+
+
+The null distribution of ES:
+
+```{r}
+hist(es_rand)
+abline(v = es, col = "red")
+```
+
+## GSEA version 2
+
+Next we implement the improved GSEA (Subramanian et al., PNAS, 2005) where gene-level scores are taken as the weight.
+
+We directly modify `calculate_es()` to `calculate_es_v2()` where there is only two lines new, which we highlight in the code chunk:
+
+```{r}
+calculate_es_v2 = function(expr, condition, cmp, geneset, plot = FALSE, power = 1) {
+
+    m1 = expr[, condition == cmp[1]]
+    m2 = expr[, condition == cmp[2]]
+
+    s = (rowMeans(m1) - rowMeans(m2))/(rowSds(m1) + rowSds(m2))
+
+    s = sort(s, decreasing = TRUE)
+
+    l_set = names(s) %in% geneset
+    
+    # f1 = cumsum(l_set)/sum(l_set)  # <<-- the original line
+    
+    s_set = abs(s)^power   # <<-- here
+    s_set[!l_set] = 0
+    f1 = cumsum(s_set)/sum(s_set)  ## <<- here
+
+    l_other = !l_set
+    f2 = cumsum(l_other)/sum(l_other)
+
+    if(plot) {
+        plot(f1 - f2, type = "l", xlab = "sorted genes")
+        abline(h = 0, lty = 2, col = "grey")
+        points(which(l_set), rep(0, sum(l_set)), pch = "|", col = "red")
+        abline(v = which.max(f1 - f2), lty = 3, col = "blue")
+    }
+
+    max(f1 - f2)
+}
+```
+
+Now we calculate the new ES score and make the GSEA plot:
+
+```{r}
+es = calculate_es_v2(expr, condition, cmp = c("WT", "MUT"), plot = TRUE, 
+    geneset = geneset)
+```
+
+We can also check when `power = 0` and `power = 2`:
+
+```{r, results = "none", fig.width = 10}
+par(mfrow = c(1, 2))
+calculate_es_v2(expr, condition, cmp = c("WT", "MUT"), plot = TRUE, power = 0, 
+    geneset = geneset)  # same as the original GSEA
+title("power = 0")
+calculate_es_v2(expr, condition, cmp = c("WT", "MUT"), plot = TRUE, power = 2, 
+    geneset = geneset)
+title("power = 2")
+```
+
+Similarly, we randomly permute samples to obtain the null distribution of ES:
+
+```{r}
+es_rand = numeric(1000)
+for(i in 1:1000) {
+	es_rand[i] = calculate_es_v2(expr, sample(condition), 
+	    cmp = c("WT", "MUT"), geneset = geneset)
+}
+```
+
+The new p-value:
+
+```{r}
+sum(es_rand >= es)/1000
+```
+
+1/1000, < 0.001
+
+And the null distribution of ES:
+
+```{r}
+hist(es_rand, xlim = c(0, 1))
+abline(v = es, col = "red")
+```
+
+We can see the improved GSEA is more powerful than the original GSEA, because the 
+original GSEA equally weights genes and the improved GSEA weights genes based on their differential expression,
+which increases the effect of diff genes. Let's plot the weight of genes:
+
+```{r}
+plot(abs(s))
+```
+
+
+## GSEA version 2, gene permutation
+
+Null distribution can also be constructed by gene permutation. It is very
+easy to implement:
+
+```{r}
+# s: a vector of pre-calcualted gene-level scores
+# s should be sorted
+calculate_es_v2_gene_perm = function(s, geneset, perm = FALSE, power = 1) {
+	
+	if(perm) {
+	    # s is still sorted, but the gene labels are randomly shuffled
+	    # to break the associations between gene scores and gene labels.
+		names(s) = sample(names(s))  ## <<- here
+	}
+
+	l_set = names(s) %in% geneset
+	s_set = abs(s)^power
+	s_set[!l_set] = 0
+	f1 = cumsum(s_set)/sum(s_set)
+
+	l_other = !l_set
+	f2 = cumsum(l_other)/sum(l_other)
+
+	max(f1 - f2)
+}
+```
+
+Good thing of gene permutation is the gene-level scores only need to be calculated
+once and can be repeatedly used.
+
+
+```{r}
+# pre-calculate gene-level scores
+m1 = expr[, condition == "WT"]
+m2 = expr[, condition == "MUT"]
+
+s = (rowMeans(m1) - rowMeans(m2))/(rowSds(m1) + rowSds(m2))
+s = sort(s, decreasing = TRUE)  # must be pre-sorted
+```
+
+We calculate the null distribution of ES from gene permutation:
+
+```{r}
+es = calculate_es_v2_gene_perm(s, geneset)
+es_rand = numeric(1000)
+for(i in 1:1000) {
+	es_rand[i] = calculate_es_v2_gene_perm(s, geneset, perm = TRUE)
+}
+
+sum(es_rand >= es)/1000
+```
+
+also < 0.001
+
+The null distribution of ES from gene permutation:
+
+```{r}
+hist(es_rand, xlim = c(0, 1))
+abline(v = es, col = "red")
+```
+
+## Other statistics
+
+Taking `es` and `es_rand` calculated previously, NES is calculated as
+
+```{r}
+es/mean(es_rand)
+```
+
+You can also call NES as fold enrichment, the log2 fold enrichment is also widely used:
+
+```{r}
+log2(es/mean(es_rand))
+```
+
+NES does not take into account of the dispersion of `es_rand`, sometimes z-scores is used instead:
+
+```{r}
+(es - mean(es_rand))/sd(es_rand)
+```
+
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+
+We have demonstrated two different ways (sample permutation and gene permutation) for calculating p-values. Apply the p53 dataset on the 50 hallmark gene sets, and compare the two enrichment results (e.g. to check which method tends to generate more signficant p-values).
+
+The code we saw so far only applies to a single gene set, you may need to put it into a `for` loop to
+go over each of the 50 hallmark gene sets.
+
+
+#### Solution
+
+The Hallmark gene sets from MSigDB
+
+```{r}
+gs_hallmark = get_msigdb(version = "2023.2.Hs", collection = "h.all", gene_id_type = "symbol")
+n_gs = length(gs_hallmark)
+```
+
+Sample permutation:
+
+```{r}
+p1 = numeric(n_gs)
+es1 = numeric(n_gs)
+nes1 = numeric(n_gs)
+z1 = numeric(n_gs)
+
+for(i in 1:n_gs) {
+	print(i)
+	geneset = gs_hallmark[[i]]
+
+	es1[i] = calculate_es_v2(expr, condition, 
+		    cmp = c("WT", "MUT"), geneset = geneset)
+
+	es_rand = numeric(1000)
+	for(k in 1:1000) {
+		es_rand[k] = calculate_es_v2(expr, sample(condition), 
+		    cmp = c("WT", "MUT"), geneset = geneset)
+	}
+	p1[i] = sum(es_rand >= es1[i])/1000
+	nes1[i] = es1[i]/mean(es_rand)
+	z1[i] = (es1[i] - mean(es_rand))/sd(es_rand)
+}
+
+df1 = data.frame(
+	geneset = names(gs_hallmark),
+	es = es1,
+	nes = nes1,
+	z = z1,
+	p_value = p1
+)
+```
+
+
+Gene permutation:
+
+```{r}
+m1 = expr[, condition == "WT"]
+m2 = expr[, condition == "MUT"]
+
+s = (rowMeans(m1) - rowMeans(m2))/(rowSds(m1) + rowSds(m2))
+s = sort(s, decreasing = TRUE)  # must be pre-sorted
+
+p2 = numeric(n_gs)
+es2 = numeric(n_gs)
+nes2 = numeric(n_gs)
+z2 = numeric(n_gs)
+
+for(i in 1:n_gs) {
+	print(i)
+	geneset = gs_hallmark[[i]]
+
+	es2[i] = calculate_es_v2_gene_perm(s, geneset = geneset)
+	
+	es_rand = numeric(1000)
+	for(k in 1:1000) {
+		es_rand[k] = calculate_es_v2_gene_perm(s, geneset = geneset, perm = TRUE)
+	}
+	p2[i] = sum(es_rand >= es2[i])/1000
+	nes2[i] = es2[i]/mean(es_rand)
+	z2[i] = (es2[i] - mean(es_rand))/sd(es_rand)
+}
+
+df2 = data.frame(
+	geneset = names(gs_hallmark),
+	es = es2,
+	nes = nes2,
+	z = z2,
+	p_value = p2
+)
+```
+
+Compare ES, NES, z-scores, and p-values:
+
+```{r, fig.width = 10, fig.height = 10}
+par(mfrow = c(2, 2))
+plot(df1$es, df2$es, main = "ES")
+plot(df1$nes, df2$nes, main = "NES", xlim = c(0, 2.5), ylim = c(0, 2.5))
+plot(df1$z, df2$z, main = "Z-score", xlim = c(0, 4), ylim = c(0, 4))
+plot(df1$p_value, df2$p_value, main = "P-value")
+```

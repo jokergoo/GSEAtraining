@@ -1,0 +1,297 @@
+---
+title: "Topic 1-09: Gene ID conversion"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r}
+library(GSEAtraining)
+```
+
+Gene ID type conversion is a very common task in gene set enrichment analysis. There are 
+two types of packages for gene ID conversion: **biomaRt** which uses the Ensembl biomart web service
+and **org.\*.db** family packages where the source information is from NCBI. Here we only introduce
+the **org.\*.db** packages because they should be enough in applications.
+
+We take **org.Hs.eg.db** (for human) as an example.
+
+```{r}
+library(org.Hs.eg.db)
+```
+
+## Use the select() interface
+
+We need the following three types of information:
+
+- `keys`: Gene IDs in one ID type;
+- `keytypes`: The name of the input ID type;
+- `columns`: The name of the output ID type;
+
+To get the valid name of ID types:
+
+```{r}
+keytypes(org.Hs.eg.db)
+columns(org.Hs.eg.db)
+```
+
+### 1:1 mapping
+
+For example, we want to convert the following two genes into Entrez IDs.
+
+```{r}
+genes = c("TP53", "MDM2")
+```
+
+1. use `select()`. The following function call can be read as "select 'ENTREZID' for the genes where their 'SYMBOL' are in 'gene'".
+
+```{r}
+map = select(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", columns = "ENTREZID")
+map
+```
+
+What if we convert them to Ensembl gene IDs:
+
+```{r}
+map = select(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", columns = "ENSEMBL")
+map
+```
+
+If you want to map to multiple ID types:
+
+```{r}
+select(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", columns = c("ENTREZID", "ENSEMBL"))
+```
+
+2. use `mapIds()` which is very similar to `select()`.
+
+Note the argument is named `column` instead of `columns`, so you can only map to one gene ID type.
+
+
+```{r}
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENTREZID")
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENSEMBL")
+```
+
+
+### 1:many mapping
+
+Now there might be some problems if the mapping is not 1:1.
+
+```{r}
+genes = c("TP53", "MMD2")
+map = select(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", columns = "ENTREZID")
+map
+```
+
+Usually it is hard to pick one unique gene for such 1:mapping case, but we can add an additional
+column "GENETYPE" when querying:
+
+```{r}
+map = select(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", columns = c("ENTREZID", "GENETYPE"))
+map
+```
+
+For "MMD2", adding the "GENETYPE" column works because the second hit of it is annotated to "unknown".
+We can simply remove it.
+
+```{r}
+map[map$GENETYPE == "protein-coding", ]
+```
+
+And it is always a good idea to only inlucde protein-coding genes in gene set enrichment analysis.
+
+
+But for `mapIds()`, it is not as flexible as `select()`. The `multiVals` argument controls how to select
+the gene when the mapping is not 1-vs-1.
+
+```{r}
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENTREZID", multiVals = "first")
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENTREZID", multiVals = "asNA")
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENTREZID", multiVals = "list")
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENTREZID", multiVals = "filter")
+
+gene_type = as.list(org.Hs.egGENETYPE)
+# this is very slow
+mapIds(org.Hs.eg.db, keys = genes, keytype = "SYMBOL", column = "ENTREZID", 
+    multiVals = function(x) {
+        x2 = x[sapply(as.list(gene_type[x]), function(y) y == "protein-coding")]
+        if(length(x2)) {
+            x2[1]
+        } else {
+            NA
+        }
+})
+```
+
+
+## Use the pre-generated objects
+
+In **org.\*.db**, there are also pre-generated objects that already contains mapping between EntreZ IDs to a specific gene ID type.
+
+```{r}
+ls(envir = asNamespace("org.Hs.eg.db"))
+```
+
+The following six objects can be used to convert between major gene ID types:
+
+- `org.Hs.egENSEMBL`: Entrez -> Ensembl
+- `org.Hs.egENSEMBL2EG`: Ensembl -> Entrez
+- `org.Hs.egREFSEQ`: Entrez -> RefSeq
+- `org.Hs.egREFSEQ2EG`: RefSeq -> Entrez
+- `org.Hs.egSYMBOL`: Entrez -> Symbol
+- `org.Hs.egSYMBOL2EG`: Symbol -> Entrez
+
+```{r}
+org.Hs.egSYMBOL
+```
+
+If you have a single gene, you can use `[[`:
+
+```{r}
+org.Hs.egSYMBOL2EG[["TP53"]]
+```
+
+
+If you have multiple genes, use `[` + `as.list()`:
+
+```{r}
+lt = as.list(org.Hs.egSYMBOL2EG)
+lt[genes]
+
+# or
+as.list(org.Hs.egSYMBOL2EG[genes])
+```
+
+You can also use `toTable()`, but it is less used for converting gene IDs:
+
+```{r}
+tb = toTable(org.Hs.egSYMBOL2EG)
+```
+
+As you can see, the drawback is you cannot use additional information to filter genes, such as gene types.
+
+
+## Conclusion
+
+If the mappig is 1:1, all the methods metioned is OK. When the mapping is 1:many, use `select()` + filtering by the "GENETYPE" column is safer.
+
+
+In the **GSEAtraining** package, there is one such function. It also automatically
+detect the input gene ID type.
+
+```{r}
+# library(GSEAtraining)
+convert_to_entrez_id(genes)
+```
+
+## Practice
+
+### {.tabset}
+
+#### Practice 1
+
+In the object `diff_gene` from the following code, there is a vector of gene symbols (human), try to convert them to EntreZ IDs (do not use `convert_to_entrez_id()`).
+
+
+```{r}
+lt = readRDS(system.file("extdata", "ora.rds", package = "GSEAtraining"))
+diff_gene = lt$diff_gene
+head(diff_gene)
+```
+
+#### Solution
+
+
+```{r, eval = FALSE}
+map = select(org.Hs.eg.db, keys = diff_gene, keytype = "SYMBOL", columns = "ENTREZID")
+unique(map$ENTREZID)
+
+# or
+map = mapIds(org.Hs.eg.db, keys = diff_gene, keytype = "SYMBOL", column = "ENTREZID")
+```
+
+
+
+### {.tabset}
+
+#### Practice 2
+
+Now we know gene ID mapping between different ID types is not always 1:1. Count
+how many (the percent) gene symbols can not be uniquely mapped to EntreZ IDs, and how
+many (the percent) Ensembl IDs can not be uniquely mapped to EntreZ IDs. And recalculate
+these two numbers only taking into account the protein-coding genes.
+
+#### Solution
+
+
+```{r}
+all_symbols = keys(org.Hs.eg.db, keytype = "SYMBOL")
+
+# use select
+map = select(org.Hs.eg.db, keys = all_symbols, keytype = "SYMBOL", columns = "ENTREZID")
+
+tb = table(map$SYMBOL)
+sum(tb > 1)/length(tb)
+
+# use mapIds
+map = mapIds(org.Hs.eg.db, keys = all_symbols, keytype = "SYMBOL", column = "ENTREZID", 
+    multiVals = "list")
+n = sapply(map, length)
+sum(n > 1)/length(n)
+
+# use org.Hs.egSYMBOL2EG
+lt = as.list(org.Hs.egSYMBOL2EG)
+n = sapply(lt, length)
+sum(n > 1)/length(n)
+```
+
+Only protein-coding genes:
+
+```{r}
+# use select
+map = select(org.Hs.eg.db, keys = all_symbols, keytype = "SYMBOL", 
+    columns = c("ENTREZID", "GENETYPE"))
+map = map[map$GENETYPE == "protein-coding", ]
+
+tb = table(map$SYMBOL)
+sum(tb > 1)/length(tb)
+```
+
+
+**Ensembl -> Entrez**
+
+
+```{r}
+all_ids = keys(org.Hs.eg.db, keytype = "ENSEMBL")
+
+# use select
+map = select(org.Hs.eg.db, keys = all_ids, keytype = "ENSEMBL", columns = "ENTREZID")
+
+tb = table(map$ENSEMBL)
+sum(tb > 1)/length(tb)
+
+tail(sort(tb))
+```
+
+Only protein-coding genes:
+
+```{r}
+# use select
+map = select(org.Hs.eg.db, keys = all_ids, keytype = "ENSEMBL", columns = c("ENTREZID", "GENETYPE"))
+map = map[map$GENETYPE == "protein-coding", ]
+
+tb = table(map$ENSEMBL)
+sum(tb > 1)/length(tb)
+```
+
+Last, we add a SYMBOL column in the map table and check what are these Ensembl genes which map to so many Entrez genes: 
+
+```{r}
+map = select(org.Hs.eg.db, keys = all_ids, keytype = "ENSEMBL", 
+    columns = c("ENTREZID", "SYMBOL", "GENETYPE"))
+map[map$ENSEMBL %in% names(tail(sort(tb))), ]
+```

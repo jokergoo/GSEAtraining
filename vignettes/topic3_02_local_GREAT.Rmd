@@ -1,0 +1,299 @@
+---
+title: "Topic 3-02: Local GREAT analysis"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+```{r}
+library(GSEAtraining)
+```
+
+## Basic usage
+
+First let's load the **rGREAT** package and generate a set of random regions:
+
+```{r}
+library(rGREAT)
+set.seed(123)
+gr = randomRegions(nr = 1000, genome = "hg19")
+```
+
+
+```{r, echo = FALSE}
+great_opt$verbose = FALSE
+```
+
+GREAT analysis needs two types of input data: the gene sets and TSS source. Thus
+the second argument in `great()` corresponds to the gene sets, and the
+third argumetn corresponds to the source of TSS.
+
+**rGREAT** has integrated many gene sets and genomes.
+
+
+```{r}
+res = great(gr, "MSigDB:H", "hg19")
+```
+
+Following functions are very similar as in online GREAT.
+
+```{r}
+tb = getEnrichmentTable(res)
+plotVolcano(res)
+plotRegionGeneAssociations(res)
+getRegionGeneAssociations(res)
+plotRegionGeneAssociations(res, term_id = "HALLMARK_APOPTOSIS")
+# shinyReport(res)
+```
+
+The following gene sets are directly supported:
+
+- `"GO:BP"`: Biological Process.
+- `"GO:CC"`: Cellular Component.
+- `"GO:MP"`: Molecular Function.
+
+Note MSigDB genes are only for human.
+
+- `"msigdb:H"` Hallmark gene sets.
+- `"msigdb:C1"` Positional gene sets.
+- `"msigdb:C2"` Curated gene sets.
+- `"msigdb:C2:CGP"` C2 subcategory: chemical and genetic perturbations gene sets. 
+- `"msigdb:C2:CP"` C2 subcategory: canonical pathways gene sets. 
+- `"msigdb:C2:CP:KEGG"` C2 subcategory: KEGG subset of CP.
+- `"msigdb:C2:CP:PID"` C2 subcategory: PID subset of CP.
+- `"msigdb:C2:CP:REACTOME"` C2 subcategory: REACTOME subset of CP.
+- `"msigdb:C2:CP:WIKIPATHWAYS"` C2 subcategory: WIKIPATHWAYS subset of CP.
+- `"msigdb:C3"` Regulatory target gene sets.
+- `"msigdb:C3:MIR:MIRDB"` miRDB of microRNA targets gene sets.
+- `"msigdb:C3:MIR:MIR_LEGACY"` MIR_Legacy of MIRDB.
+- `"msigdb:C3:TFT:GTRD"` GTRD transcription factor targets gene sets.
+- `"msigdb:C3:TFT:TFT_LEGACY"` TFT_Legacy.
+- `"msigdb:C4"` Computational gene sets.
+- `"msigdb:C4:CGN"` C4 subcategory: cancer gene neighborhoods gene sets.
+- `"msigdb:C4:CM"` C4 subcategory: cancer modules gene sets.
+- `"msigdb:C5"` Ontology gene sets.
+- `"msigdb:C5:GO:BP"` C5 subcategory: BP subset.
+- `"msigdb:C5:GO:CC"` C5 subcategory: CC subset.
+- `"msigdb:C5:GO:MF"` C5 subcategory: MF subset.
+- `"msigdb:C5:HPO"` C5 subcategory: human phenotype ontology gene sets.
+- `"msigdb:C6"` Oncogenic signature gene sets.
+- `"msigdb:C7"` Immunologic signature gene sets.
+- `"msigdb:C7:IMMUNESIGDB"` ImmuneSigDB subset of C7.
+- `"msigdb:C7:VAX"` C7 subcategory: vaccine response gene sets.
+- `"msigdb:C8"` Cell type signature gene sets.
+
+The `"GO:"` and "msigdb:" prefix can be removed when specifying in `great()`.
+
+## Setting genome background
+
+Background can be set via `backgroud` and `excluce` arguments.
+
+```r
+gap = getGapFromUCSC("hg19", paste0("chr", c(1:22, "X", "Y")))
+great(gr, "MSigDB:H", "hg19", exclude = gap)
+
+great(gr, "GO:BP", background = paste0("chr", 1:22))
+great(gr, "GO:BP", exclude = c("chrX", "chrY"))
+```
+
+Restricting the anallysis in a certain type of genome background helps to
+reduce the false positives. Examples are:
+
+- excluding unmappable regions
+- regions with certain level of CG density
+- regions with certain level of gene densities
+- exons (coding regions)
+
+
+## Using other gene sets
+
+More gene sets can be set as a list of gene vectors. For most organisms, EntreZ IDs
+should be used as the gene ID type in gene sets.
+
+From a `.gmt` file:
+
+```{r}
+gs = read_gmt(url("http://dsigdb.tanlab.org/Downloads/D2_LINCS.gmt"), 
+    from = "SYMBOL", to = "ENTREZ", orgdb = "org.Hs.eg.db")
+gs[1:2]
+great(gr, gs, "hg19")
+```
+
+KEGG pathways:
+
+```{r}
+df = read.table(url("https://rest.kegg.jp/link/pathway/hsa"), sep = "\t")
+df[, 1] = gsub("hsa:", "", df[, 1])
+df[, 2] = gsub("path:",  "", df[, 2])
+gs_kegg = split(df[, 1], df[, 2])
+gs_kegg[1:2]
+great(gr, gs_kegg, "hg19")
+```
+
+Reactome pathways:
+
+```{r}
+library(reactome.db)
+gs_reactome = as.list(reactomePATHID2EXTID)
+great(gr, gs_reactome, "hg19")
+```
+
+## Other organisms who have txdb packages
+
+On Bioconductor, there are a family of annotation packages with name **txdb.\*.db**.
+These packages contain sources of TSS definitions.
+
+All supported **txdb.\*.db** packages:
+
+```{r}
+tb = rGREAT:::BIOC_ANNO_PKGS
+knitr::kable(tb[!duplicated(tb$genome_version_in_txdb), ])
+```
+
+For these packages, users only need to specify the "genome version":
+
+```r
+great(gr, "BP", "mm10")
+great(gr, "BP", "rn7")
+```
+
+## Use MSigDB gene sets
+
+The **msigdbr** package provides gene sets by mapping to several other organisms.
+
+```{r}
+library(msigdbr)
+msigdbr_species()
+```
+
+```{r}
+h_gene_sets = msigdbr(species = "chimpanzee", category = "H")
+head(h_gene_sets)
+```
+
+Convert from the original format to a list of gene vectors.
+
+```{r}
+h_gene_sets = split(h_gene_sets$entrez_gene, h_gene_sets$gs_name)
+h_gene_sets = lapply(h_gene_sets, as.character)  # just to make sure gene IDs are all in character.
+h_gene_sets = lapply(h_gene_sets, function(x) unique(x[!is.na(x)])) # remove NA and duplicated genes
+h_gene_sets[1:2]
+```
+
+Remember to pick the correct genome version.
+
+```r
+great(gr, h_gene_sets, "panTro6")
+```
+
+## Other organisms who have txdb object on AnnotationHub
+
+For some other organisms, although they don't have a **txdb** package on Bioconductor,
+but they have a `txdb` object on **AnnotationHub**:
+
+```{r}
+library(AnnotationHub)
+ah = AnnotationHub()
+query(ah, "TxDb")
+```
+
+But it seems many of those organisms are microbes. I will not introduce it here.
+
+
+## Other organisms who do not have txdb objects
+
+Then we need to obtain the TSS definition manually. Obtaining gene sets for an organism
+is relatively easy, but it is sometimes difficult to find a proper genome version because
+for these "rare" genomes, their genome data evolves very fast.
+
+There are mainly two sources to obtain TSS definitions: 1. from NCBI, 2. from Ensembl.
+
+### Get TSS from NCBI
+
+We need to first know the "accession number" of an organism's genome. Taking
+dolphin as an example, its web page on NCBI Genome is https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_011762595.1/. In **rGREAT**, there is a `getGenomeDataFromNCBI()` function which
+can automatically retrieve gene definitions from NCBI.
+
+```{r}
+genes = getGenomeDataFromNCBI("GCF_011762595.1", return_granges = TRUE)
+genes
+```
+
+As we have already introduced, retrieve GO gene sets for an organism is easy:
+
+```{r}
+library(AnnotationHub)
+ah = AnnotationHub()
+orgdb = ah[["AH112418"]]
+gs = get_GO_gene_sets_from_orgdb(orgdb, "BP")
+gs[1:2]
+```
+
+Note `genes` is set to the argument `tss_source`:
+
+```r
+great(gr, gs, tss_source = genes)
+```
+
+Remember to double check the format of chromosome names in `gr` and in `genes`.
+
+### KEGG
+
+KEGG also links to NCBI genomes, but the genome version for an organism is not always synchronized 
+to NCBI. The function `getKEGGGenome()` returns the accession number of the genome recorded
+on KEGG, and this accession number can be directly used in `getGenomeDataFromNCBI()`.
+
+`getKEGGPathways()` is a helper function which downloads KEGG pathways.
+
+
+In the following example, `"mgp"` is the organism code for Meleagris gallopavo (turkey).
+
+```{r}
+genes = getGenomeDataFromNCBI(getKEGGGenome("mgp"), return_granges = TRUE)
+head(genes)
+gene_sets = getKEGGPathways("mgp")
+gene_sets[1:2]
+```
+
+```r
+great(gr, gene_sets, genes)
+```
+
+### Use BioMart GO gene sets
+
+The **BioMartGOGeneSets** package not only contains GO gene sets for > 700 organisms, but also the gene definitions. `great()` has already integrate **BioMartGOGeneSets** and you only
+need to specify the `biomart_dataset` argument.
+
+Note, the genes from biomart may not come from the genome with the same version as on NCBI, normally older than NCBI. You need to double check the genome version on biomart and in your `gr`.
+
+```r
+great(gr, "GO:BP", biomart_dataset = "amelanoleuca_gene_ensembl")
+```
+
+
+## Practice
+
+### {.tabset}
+
+#### Practice 1
+
+
+Run local GREAT analysis with a list of TFBS from UCSC table browser:
+
+```
+clade: Mammal
+genome: Human
+assembly: GRCh37/hg19
+group: Regulation
+track: ENCODE 3 TFBS
+table: 22Rv1 ZFX (encTfChipRkENCFF445OFX)
+```
+
+In the "output format" field, select "BED - browser extensible data", then click the button "get output". In the next page, click the button "get BED".
+
+Use 1. the GO BP gene sets and 2. KEGG pathways.
+
