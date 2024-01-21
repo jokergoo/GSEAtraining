@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-06: Get gene sets from UniProt Keywords}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 UniProt database provides a list of controlled vocabulary represented as
 keywords for genes or proteins (https://www.uniprot.org/keywords/). This is

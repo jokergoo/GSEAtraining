@@ -10,7 +10,8 @@ Imports: stats, DBI, DT, RSQLite, htmltools, shiny, AnnotationDbi, matrixStats
 Suggests: knitr, rmarkdown, GO.db, org.Hs.eg.db, KEGGREST, clusterProfiler, msigdbr,
     reactome.db, BioCartaImage, UniProtKeywords, BioMartGOGeneSets, AnnotationHub,
     BiocHubsShiny, Orthology.eg.db, microbenchmark, ReactomePA, DOSE, org.Ss.eg.db,
-    CePa, eulerr, rGREAT, goseq, GSVA, simplifyEnrichment, simona, enrichplot, ggplot2
+    CePa, eulerr, rGREAT, goseq, GSVA, simplifyEnrichment, simona, enrichplot, ggplot2,
+    ComplexHeatmap, circlize, genefilter
 VignetteBuilder: knitr
 Description: The training materials in this package are only allowed for noncommercial use.
 URL: https://github.com/jokergoo/GSEAtraining

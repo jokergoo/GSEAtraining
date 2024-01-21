@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-09: Gene ID conversion}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 Gene ID type conversion is a very common task in gene set enrichment analysis. There are 
 two types of packages for gene ID conversion: **biomaRt** which uses the Ensembl biomart web service
@@ -22,6 +23,8 @@ We take **org.Hs.eg.db** (for human) as an example.
 ```{r}
 library(org.Hs.eg.db)
 ```
+
+Note: it is the same for the `OrgDb` objects for other orgainsms on **AnnotationHub**.
 
 ## Use the select() interface
 
@@ -183,8 +186,8 @@ If the mappig is 1:1, all the methods metioned is OK. When the mapping is 1:many
 In the **GSEAtraining** package, there is one such function. It also automatically
 detect the input gene ID type.
 
-```{r}
-# library(GSEAtraining)
+```{r, eval = FALSE}
+library(GSEAtraining)
 convert_to_entrez_id(genes)
 ```
 

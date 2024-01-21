@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 5-02: simplifyEnrichment}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 **simplifyEnrichment** is suggested to work on GO enrichment results.
 
@@ -26,7 +27,7 @@ library(simplifyEnrichment)
 set.seed(888)
 go_id = random_GO(500)
 df = simplifyGO(go_id)
-table(df)
+head(df)
 ```
 
 ## Multiple enrichment results
@@ -43,7 +44,7 @@ get_signatures(res, k = 3)
 ```
 
 ```{r}
-lt = readRDS(system.file("extdata", "lt_enrichment_tables.rds"))
+lt = readRDS(system.file("extdata", "lt_enrichment_tables.rds", package = "GSEAtraining"))
 length(lt)
 head(lt[[1]])
 ```
@@ -58,7 +59,7 @@ simplifyGOFromMultipleLists(lt, padj_cutoff = 0.001)
 
 ## Word clouds
 
-Let's say, for the following plot, the heatmap is might be necessary to put into the final report.
+Let's say, for the following plot, the heatmap is might not be necessary to put into the final report.
 
 ```{r, fig.width = 8, fig.height = 4.5, eval = FALSE}
 df = lt[[1]]
@@ -69,7 +70,7 @@ simplifyGO(go_id)
 <img src="topic5_02_figure_3.png" />
 
 
-`summarizeGO()` makes an even simpler plot with word cloud and simply statistical graphics.
+`summarizeGO()` makes an even simpler plot with word cloud and simple statistical graphics.
 
 Two inputs for the function:
 
@@ -124,3 +125,48 @@ summarizeGO(value = value, axis_label = "average log2_fold_enrichment",
 
 <img src="topic5_02_figure_7.png" />
 
+
+
+## Practice 
+
+### {.tabset}
+
+#### Practice 1
+
+Recall in [Topic 2-02: Implement ORA from stratch](topic2_02_implement_ora.html), we compared
+the ORA results when setting DE cutoffs to 0.05, 0.01 and 0.001. Now perform a simplify enrichment
+analysis on the three ORA tables and compare them.
+
+```{r}
+de = readRDS(system.file("extdata", "de.rds", package = "GSEAtraining"))
+de = de[, c("symbol", "p_value")]
+de = de[!is.na(de$p_value), ]
+
+de_genes_1 = de$symbol[de$p_value < 0.05]
+de_genes_2 = de$symbol[de$p_value < 0.01]
+de_genes_3 = de$symbol[de$p_value < 0.001]
+
+library(GSEAtraining)
+library(org.Hs.eg.db)
+gs = get_GO_gene_sets_from_orgdb(org.Hs.eg.db, "BP", gene_id_type = "SYMBOL")
+
+tb1 = ora(de_genes_1, gs)
+tb2 = ora(de_genes_2, gs)
+tb3 = ora(de_genes_3, gs)
+```
+
+
+#### Solution
+
+```{r, eval = FALSE}
+lt = list(
+    "DE_0.05" = tb1,
+    "DE_0.01" = tb2,
+    "DE_0.001" = tb3
+)
+
+simplifyGOFromMultipleLists(lt, padj_cutoff = 0.05)
+```
+
+
+<img src="topic5_02_figure_solution.png" />

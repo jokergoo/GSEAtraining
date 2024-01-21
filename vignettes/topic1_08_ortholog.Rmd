@@ -6,12 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-08: Generate gene sets for other organisms by mapping to orthologues}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-
-```{r}
-library(GSEAtraining)
-```
 
 In the Bioconductor ecosystem, there are already a huge number of gene set resources for a large number of organisms. However, there can still be cases where a poor-studied organism does not have a well-annotated gene set resource. Human, of course, is the most studied organism and it has the richest annotation resources. For other organisms, we can built similar gene sets by mapping to orthologues to human genes.
 
@@ -114,9 +114,10 @@ names(map_vec) = map_df[, 1]
 head(map_vec)
 ```
 
-We have the mappings from human to panda, now we can construct the hallmark gene sets for panda. First let’s obtain the hallmark gene sets for human. The `get_msigdb()` function is from the GSEAbook package.
+We have the mappings from human to panda, now we can construct the hallmark gene sets for panda. First let’s obtain the hallmark gene sets for human. The `get_msigdb()` function is from the **GSEAtraining** package.
 
 ```{r}
+library(GSEAtraining)
 gs_human = get_msigdb(version = "2023.2.Hs", collection = "h.all")
 ```
 

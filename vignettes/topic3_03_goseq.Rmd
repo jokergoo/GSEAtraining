@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 3-03: GOseq}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 The input of **goseq** is very simple. It only needs a named binary vector with values 0 or 1,
 where 1 means the gene is a DE gene. 
@@ -68,7 +69,9 @@ Let's check the "bias distribution" again.
 pwf = nullp(genes, "hg19", "ensGene")
 ```
 
-This becomes interesting. It shows a reverse pattern as in the original paper. Note many lowly-expressed genes are short, so the increasing trend in the left part of the curve is from
+This becomes interesting. It shows a reverse pattern as in the original paper. 
+
+Note many lowly-expressed genes are short, so the increasing trend in the left part of the curve is from
 the proportion of "expressed genes" getting higher? Or can we say actually there is no such bias
 as mentioned in the goseq paper?
 
@@ -105,6 +108,7 @@ diff_gene = tb$ensembl[l]
 `diff_gene` are Ensembl IDs. We convert them to Entrez IDs:
 
 ```{r}
+library(GSEAtraining)
 diff_gene = convert_to_entrez_id(diff_gene)
 ```
 

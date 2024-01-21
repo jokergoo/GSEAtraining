@@ -6,17 +6,20 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 6-01: Visualization}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 ## ORA result
 
 ### Single ORA result
 
 ```{r}
+library(GSEAtraining)
+
 lt = readRDS(system.file("extdata", "ora.rds", package = "GSEAtraining"))
 diff_gene = lt$diff_gene
 diff_gene = convert_to_entrez_id(diff_gene)
@@ -36,7 +39,14 @@ tb = res@result
 head(tb)
 ```
 
-The most used type of plot is to use simple statistical graphics for a small set of pre-selected gene sets.
+The mostly-used type of plot is to use simple statistical graphics for a small set of pre-selected gene sets.
+
+```{r}
+par(mar = c(4.1, 20, 4, 1))
+barplot(tb$n_hits[1:10], horiz = TRUE, names.arg = tb$Description[1:10], las = 1)
+```
+
+Using **ggplot2** is a better idea for visualizing data.
 
 ```{r}
 library(ggplot2)
@@ -47,7 +57,6 @@ ggplot(tb[1:10, ], aes(x = n_hits, y = Description)) +
 Number of DE genes in gene set may not be a good statistic, more commonly used statistics
 are log2 fold enrichment or -log10 p.adjust.
 
-ggplot(tb[1:10, ], aes(x = n_hits, y = factor(Description, levels = Description))) + geom_col()
 
 ```{r}
 ggplot(tb[1:10, ], aes(x = log2_fold_enrichment, y = Description)) + 
@@ -62,7 +71,8 @@ ggplot(tb[1:10, ], aes(x = log2_fold_enrichment, y = Description)) +
     geom_text(aes(x = log2_fold_enrichment, label = sprintf('%1.e', p.adjust)))
 ```
 
-By default, **ggplot2** reorders labels alphabetically, 
+By default, **ggplot2** reorders labels alphabetically. You can set the name
+as a factor and specify the order there. 
 
 ```{r}
 ggplot(tb[1:10, ], aes(x = log2_fold_enrichment, y = factor(Description, levels = Description))) + 
@@ -88,7 +98,7 @@ ggplot(tb[1:10, ], aes(x = log2_fold_enrichment, y = Description, size = n_hits)
 Even more, we can map a third statistic to the dot colors.
 
 ```{r}
-ggplot(tb[1:10, ], aes(x = gs_size, y = Description, size = n_hits, col = n_hits/gs_size)) + 
+ggplot(tb[1:10, ], aes(x = log2_fold_enrichment, y = Description, size = n_hits, col = n_hits/gs_size)) + 
     geom_point()
 
 ```
@@ -143,7 +153,7 @@ To visualize multiple ORA enrichment tables in one plot, we need to first prepar
 which combines results for a pre-selected gene sets.
 
 ```{r}
-lt = readRDS(system.file("extdata", "lt_enrichment_tables.rds"))
+lt = readRDS(system.file("extdata", "lt_enrichment_tables.rds", package = "GSEAtraining"))
 
 set.seed(666)
 terms = sample(lt[[1]]$ID, 10)
@@ -197,6 +207,14 @@ ggplot(tb, aes(x = NES, y = -log10(p.adjust))) +
     geom_hline(yintercept = -log10(0.05), lty = 2) + geom_vline(xintercept = c(1, -1), lty = 2)
 ```
 
+
+The degree of enrichment is also dependent to the gene set sizes.
+
+```{r}
+ggplot(tb, aes(x = NES, y = -log10(p.adjust), color = setSize)) +
+    geom_point() + scale_colour_distiller(palette = "Spectral")
+```
+
 The ridge plot (joy plot/mountain plot) visualizes the distribution of gene-level scores in each gene set.
 
 ```{r, fig.height = 10}
@@ -206,8 +224,8 @@ ridgeplot(res_gsea)
 And the classic GSEA plot:
 
 ```{r}
-gseaplot(res_gsea, geneSetID = 1)
-gseaplot2(res_gsea, geneSetID = 1)
+gseaplot(res_gsea, geneSetID = 4)
+gseaplot2(res_gsea, geneSetID = 4)
 ```
 
 ```{r}

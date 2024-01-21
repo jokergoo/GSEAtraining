@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 4-02: GSVA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 ## GSVA
 
@@ -96,8 +97,7 @@ Heatmap(mm, name = "z-score", top_annotation = HeatmapAnnotation(cond = conditio
     column_title = "p53Pathway",
     right_annotation = rowAnnotation(bar = anno_barplot(s[g], axis_param = list(direction = "reverse"), width = unit(2, "cm"))),
     column_split = condition) %v%
-Heatmap(gs_mat["hivnefPathway", , drop = FALSE], name = "set variation",
-    col = circlize::colorRamp2(c(-1, 0, 1), c("green", "yellow", "red")))
+Heatmap(gs_mat["hivnefPathway", , drop = FALSE], name = "set variation")
 ```
 
 Next we make pairwise scatterplot of p-values and statistics for both analysis.
@@ -109,6 +109,8 @@ plot(tdf[cn, "p.value"], tb[cn, "pvalue"],
     xlab = "GSVA", ylab = "normal GSEA", main = "p-values")
 plot(tdf[cn, "statistic"], tb[cn, "NES"],
     xlab = "GSVA / t-values", ylab = "normal GSEA / NES")
+abline(h = 0, lty = 2, col = "grey")
+abline(v = 0, lty = 2, col = "grey")
 ```
 
 This makes a problem here that one method generates a significant gene set
@@ -124,8 +126,7 @@ mm = t(scale(t(mm)))  # z-score transformation
 Heatmap(mm, name = "z-score", top_annotation = HeatmapAnnotation(cond = condition),
     right_annotation = rowAnnotation(bar = anno_barplot(s[g], axis_param = list(direction = "reverse"), width = unit(2, "cm"))),
     column_split = condition) %v%
-Heatmap(gs_mat["hivnefPathway", , drop = FALSE], name = "set variation",
-    col = circlize::colorRamp2(c(-1, 0, 1), c("green", "yellow", "red")))
+Heatmap(gs_mat["hivnefPathway", , drop = FALSE], name = "set variation")
 ```
 
 

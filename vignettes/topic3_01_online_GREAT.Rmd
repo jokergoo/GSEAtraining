@@ -6,14 +6,14 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 3-01: Online GREAT analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 
-```{r}
-library(GSEAtraining)
-```
-
-We first read the peaks as a data frame.
+We first read the peaks (https://github.com/jokergoo/GSEAtraining/blob/master/inst/extdata/mm9_chipseq_peaks.bed) as a data frame.
 
 ```{r}
 bed = read.table(system.file("extdata", "mm9_chipseq_peaks.bed", package = "GSEAtraining"))
@@ -28,7 +28,7 @@ URL: https://great.stanford.edu/great/public/html/index.php
 
 ## Online GREAT analysis
 
-Use `submitGreatJob()` to submit the regions to GREAT web server. By default
+Use `submitGreatJob()` to submit the regions to the GREAT web server. By default
 the species is human (hg19), so here we need to manually set the `species` argument.
 
 Entering the object `job` prints the summary of the job.

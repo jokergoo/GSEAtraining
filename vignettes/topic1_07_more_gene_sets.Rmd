@@ -6,11 +6,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-07: Get GO/KEGG gene sets for other organisms}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-```{r}
-library(GSEAtraining)
-```
 
 Besides those well-studied organisms, there are also resources for less well-studies organisms, mainly for KEGG and GO gene sets.
 
@@ -128,12 +128,8 @@ query(ah, c("Felis catus", "OrgDb"))
 ```
 
 
-Besides using `query()` to search for the AnnotationHub dataset, there are another two
-ways which allows interactively searching for datasets:
-
-- Using the **BiocHubsShiny** package.
-- Using `ah_shiny()` function from the **GSEATraining** package.
-
+Besides using `query()` to search for the AnnotationHub dataset, you can
+also use the **BiocHubsShiny** package to interactively searching for datasets:
 
 Now we download the data.
 
@@ -166,9 +162,10 @@ tb = unique(tb)
 
 
 
-With an `OrgDb` object, you can also use the helper function `get_GO_gene_sets_from_orgdb()` in **GSEAtraning** package:
+With an `OrgDb` object, you can also use the helper function `get_GO_gene_sets_from_orgdb()` in **GSEAtraining** package:
 
 ```{r}
+library(GSEAtraining)
 lt = get_GO_gene_sets_from_orgdb(org_db, "BP")
 lt[1]
 ```

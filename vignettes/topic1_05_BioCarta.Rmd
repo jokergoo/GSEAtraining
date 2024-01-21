@@ -6,11 +6,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-05: Get pathways from BioCarta}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-```{r}
-library(GSEAtraining)
-```
 
 [BioCarta](https://web.archive.org/web/20170122225118/https://cgap.nci.nih.gov/Pathways/BioCarta_Pathways) is a valuable source of biological pathways which not only provides well manually curated pathways, but also remarkable and intuitive pathway images.
 

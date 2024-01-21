@@ -6,11 +6,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 2-05: Use clusterProfiler for GSEA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-```{r}
-library(GSEAtraining)
-```
 
 
 **Note in clusterProfiler, p-values are calculated by gene permutations!**
@@ -25,6 +25,7 @@ head(gene_diff_score)
 We need to convert genes from symbols to EntreZ IDs.
 
 ```{r}
+library(org.Hs.eg.db)
 map = mapIds(org.Hs.eg.db, keys = names(gene_diff_score), keytype = "SYMBOL", column = "ENTREZID")
 head(map)
 
@@ -37,6 +38,7 @@ Here we use the `convert_to_entrez_id()` function from the **GSEAtraining** pack
 
 
 ```{r}
+library(GSEAtraining)
 gene_diff_score = convert_to_entrez_id(gene_diff_score)
 head(gene_diff_score)
 ```
@@ -151,29 +153,42 @@ head(tb)
 
 ## Examples for less well-studied organisms
 
-Taking dolphin as an example. 
+
+### When an `OrgDb` object is avaiable
+
+Taking dolphin as an example. Since `org_db` is an `OrgDb` object, we can directly use `gseGO()`:
 
 ```{r}
 library(AnnotationHub)
 ah = AnnotationHub()
 org_db = ah[["AH112418"]]
-gs = get_GO_gene_sets_from_orgdb(org_db, "BP", as_table = TRUE)
 
 all_genes = keys(org_db, keytype = "ENTREZID")
 scores = sort(rnorm(length(all_genes)), decreasing = TRUE)
 names(scores) = sample(all_genes)
 
-tb = GSEA(geneList = scores, TERM2GENE = gs[, 2:1], pvalueCutoff = 1)
-head(tb)
-```
-
-
-Since `org_db` is an `OrgDb` object, we can directly use `enrichGO()`:
-
-```{r}
 tb = gseGO(geneList = scores, ont = "BP", OrgDb = org_db, pvalueCutoff = 1)
 head(tb)
 ```
+
+
+### gseKEGG() also supports many other orgainsms
+
+```r
+gseKEGG(geneList = scores, organism = ...)
+```
+
+### Manually construct the gene sets
+
+
+We have introduced many ways to obtain gene sets for less well-studies organisms.
+The only thing to do here is to convert gene sets to a two-column data frame where gene sets 
+are in the first column and genes are in the second column. Then use `GSEA()`.
+
+```r
+GSEA(geneList = scores, TERM2GENE = ...)
+```
+
 
 ## Look at the `tb` object
 
@@ -184,9 +199,19 @@ class(tb)
 str(tb)
 ```
 
-In the ORA analysis by **clusterProfiler**, we mentioned using `tb@result` returns the full enrichment table. **But this is not the case for the GSEA anlaysis!**. In GSEA anlaysis 
-by **clusterProfiler**, `tb@result` still returns the significant terms. 
-Add `pvalueCutoff = 1` argument if you need the full table.
+<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    background: #eee;
+    border-left: 6px #CCCCCC solid;
+}
+</style>
+
+> In the ORA analysis by **clusterProfiler**, we mentioned using `tb@result` returns the full enrichment table. **But this is not the case for the GSEA anlaysis!**. In GSEA anlaysis 
+> by **clusterProfiler**, `tb@result` still returns the significant terms. 
+> Add `pvalueCutoff = 1` argument if you need the full table.
 
 
 ## Practice 

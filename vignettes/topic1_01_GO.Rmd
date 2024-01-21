@@ -6,11 +6,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-01: Get GO gene sets}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-```{r}
-library(GSEAtraining)
-```
 
 To obtain GO gene sets, we need to use two packages: **GO.db** and **org.\*.db** packages.
 
@@ -75,7 +75,7 @@ prefix).
 
 `GOBPCHILDREN` and `GOBPPARENTS` contain parent-child relations.
 `GOBPOFFSPRING` contains all offspring terms of GO terms (i.e., all downstream
-terms of a term in the GO tree) and `GOBPANCESTOR` contais all ancestor terms
+terms of a term in the GO tree) and `GOBPANCESTOR` contains all ancestor terms
 of a GO term (i.e., all upstream terms of a term). The information in the four
 variables are actually redudant, e.g., all the other three objects can be
 constructed from `GOBPCHILDREN`. However, these pre-computated objects will
@@ -196,34 +196,35 @@ Constructing `GOBPOFFSPRING` from `GOBPCHILDREN` needs a recursive processing an
 ```r
 lt_children = as.list(GOBPCHILDREN)
 
-add_children = function(term) {
+add_children = function(term, env) {
     children = lt_children[[term]]
     if(identical(children, NA)) {
         return(NULL)
     }
     env$offspring = c(env$offspring, children)
-    lapply(children, add_children)
+    lapply(children, add_children, env)
 }
 
+i = 0
 lt_offspring = lapply(lt_children, function(x) {
+    i <<- i + 1
+    cat(i, "/", length(lt_children), "\n")
     if(identical(x, NA)) {
         return(x)
     } else {
         env = new.env()
         env$offspring = character(0)
         for(y in x) {
-            add_children(y)
+            add_children(y, env)
         }
         unique(env$offspring)
     }
 })
-
-
 ```
 
 ### Information of GO terms
 
-Only we only see the GO IDs, the object `GOTERM` can be used to get the name and long description
+Only we only see the GO IDs, the object `GOTERM` can be used to get the names and long descriptions
 of GO terms.
 
 ```{r}
@@ -270,7 +271,7 @@ Ontology(GOTERM[c("GO:0000001", "GO:0000002", "GO:0000003")])
 ## Link GO terms to genes
 
 **GO.db** only contains information for GO terms.
-GO also provides gene annotated to GO terms, by manual curation or computation prediction.
+GO also provides gene annotated to GO terms, by manual curation or computational prediction.
 Such annotations are represented as mappings between GO IDs and gene IDs from external databases,
 which are usually synchronized between major public databases such NCBI.
 
@@ -360,10 +361,17 @@ org.Hs.egGO2ALLEGS[["GO:0000002"]]
 ```
 
 A gene can be duplicatedly annotated to a GO term with differnet evidence code. Thus,
-to obtain the GO gene sets, we need to take the unique genes:
+to obtain the GO gene sets, we need to take the unique genes.
+
 
 ```{r}
+n1 = sapply(lt, length)
 lt = lapply(lt, unique)
+n2 = sapply(lt, length)
+
+plot(n1, n2, xlim = c(0, max(n1)), ylim = c(0, max(n1)),
+    xlab = "with duplicated", ylab = "without duplicated",
+    main = "number of genes in GO BP gene sets")
 
 tb = tb[, 1:2]
 tb = unique(tb)
@@ -476,33 +484,33 @@ in `org.Hs.egGO2ALLEGS`.
 
 
 ```{r}
-lt = as.list(org.Hs.egGO2EG)
-lt2 = as.list(GOBPOFFSPRING)
+lt_genes = as.list(org.Hs.egGO2EG)
+lt_terms = as.list(GOBPOFFSPRING)
 ```
 
 For a GO term, we need to consider its offspring terms + the term itself:
 
 ```{r}
-for(nm in names(lt2)) {
-    lt2[[nm]] = c(lt2[[nm]], nm)
+for(nm in names(lt_terms)) {
+    lt_terms[[nm]] = c(lt_terms[[nm]], nm)
 }
 ```
 
-Merge all offspring terms:
+Merge annotated genes for all offspring terms:
 
 ```{r}
-lt2 = lapply(lt2, function(x) {
-    unique(unlist(lt[x]))
+lt_genes_manual = lapply(lt_terms, function(x) {
+    unique(unlist(lt_genes[x]))
 })
 ```
 
 Compare to `org.Hs.egGO2ALLEGS`:
 
 ```{r}
-lt3 = as.list(org.Hs.egGO2ALLEGS)
-lt3 = lapply(lt3, unique)
+lt_genes_all = as.list(org.Hs.egGO2ALLEGS)
+lt_genes_all = lapply(lt_genes_all, unique)
 
-cn = intersect(names(lt2), names(lt3))
-plot(sapply(lt2[cn], length), sapply(lt3[cn], length), log = "xy",
+cn = intersect(names(lt_genes_manual), names(lt_genes_all))
+plot(sapply(lt_genes_manual[cn], length), sapply(lt_genes_all[cn], length), log = "xy",
     xlab = "manual gene sets", ylab = "org.Hs.egGO2ALLEGS")
 ```

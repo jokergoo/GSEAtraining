@@ -1,0 +1,89 @@
+---
+title: "Topic 1-00: Representation of gene sets in R"
+author: "Zuguang Gu <z.gu@dkfz.de>"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-00: Representation of gene sets in R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+Gene sets are represented as a list of genes. There are three types of representations in R.
+
+
+1. A list of gene vectors
+
+```{r}
+lt = list(
+    geneset1 = c("gene1", "gene2", "gene3"),
+    geneset2 = c("gene2", "gene4"),
+    geneset3 = c("gene1", "gene3", "gene5", "gene6")
+)
+lt
+```
+
+2. A two-column data frame
+
+```{r}
+df = data.frame(
+    geneset = c(rep("geneset1", 3), rep("geneset2", 2), rep("geneset3", 4)),
+    gene = c("gene1", "gene2", "gene3", "gene2", "gene4", "gene1", "gene3", "gene5", "gene6")
+)
+df
+```
+
+Some tools may need genes to be in the first column:
+
+```{r}
+df[, 2:1]
+```
+
+
+These two formats can be very easily converted to each other:
+
+- list to data frame
+
+```{r}
+data.frame(
+    geneset = rep(names(lt), times = sapply(lt, length)),
+    gene = unlist(lt)
+)
+```
+
+- data frame to list
+
+```{r}
+split(df$gene, df$geneset)
+```
+
+In the **GSEAtraining** package, there are two helper functions `list_to_dataframe()` and
+`dataframe_to_list()` that do the conversions:
+
+```{r}
+library(GSEAtraining)
+list_to_dataframe(lt)
+dataframe_to_list(df)
+```
+
+3. a binary matrix
+
+Not very often, the relation between genes and gene sets can be represented as a binary matrix:
+
+```{r}
+m = matrix(0, nrow = 3, ncol = 6)
+rownames(m) = unique(df$geneset)
+colnames(m) = unique(df$gene)
+
+for(i in seq_len(nrow(df))) {
+    m[df[i, 1], df[i, 2]] = 1
+}
+m
+```
+
+Note when there are more gene sets, there will be a lot of more zeros in `m`. In this case,
+we can use "sparse matrix format" to store the data.

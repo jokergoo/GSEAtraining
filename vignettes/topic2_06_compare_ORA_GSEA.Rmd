@@ -6,11 +6,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 2-06: Compare ORA and GSEA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-```{r}
-library(GSEAtraining)
-```
 
 
 We apply ORA and GSEA on the same p53 datasets and compare the results.
@@ -24,6 +24,7 @@ condition = lt$condition
 We convert gene IDs to Entrez IDs in `expr`:
 
 ```{r}
+library(GSEAtraining)
 expr = convert_to_entrez_id(expr)
 ```
 
@@ -43,10 +44,7 @@ p = apply(expr, 1, function(x) {
 ```
 
 
-Faster ways: row* family functions
-
-- `rowMeans()`  faster version of `apply(mat, 1, mean)`
-- `rowSds()`    `apply(mat, 1, sd)`
+Faster row-wise t-test: 
 
 ```{r}
 library(genefilter)
@@ -100,40 +98,4 @@ We compare the two significant GO lists:
 ```{r}
 library(eulerr)
 plot(euler(list(ORA = tb_ora$ID, GSEA = tb_gsea$ID)), quantities = TRUE)
-```
-
-Recall ORA is sensitive to selection of background genes and cutoff of diff genes.
-Next we first set background for ORA, which is the total genes in the matrix:
-
-```{r, message = FALSE}
-l_sig = abs(tdf$statistic) > 2
-tb_ora_with_bg = enrichGO(gene = rownames(expr)[l_sig],
-                  universe = rownames(expr),
-                  OrgDb = org.Hs.eg.db,
-                  ont   = "BP",
-                  pAdjustMethod = "BH")
-tb_ora_with_bg = as.data.frame(tb_ora_with_bg)
-nrow(tb_ora_with_bg)
-```
-
-If setting the background (`r nrow(expr)` genes), there is no significant gene set anymore!
-
-We also change the cutoff of gene-level t-statistics to 1.5, without background.
-
-```{r}
-l_sig = abs(tdf$statistic) > 1.5
-tb_ora_1.5 = enrichGO(gene  = rownames(expr)[l_sig],
-                  OrgDb = org.Hs.eg.db,
-                  ont   = "BP",
-                  pAdjustMethod = "BH")
-tb_ora_1.5 = as.data.frame(tb_ora_1.5)
-```
-
-We compare the significant GO lists:
-
-```{r}
-plot(euler(list(ORA = tb_ora$ID, 
-                ORA_1.5 = tb_ora_1.5$ID, 
-                GSEA = tb_gsea$ID)), 
-    quantities = TRUE)
 ```

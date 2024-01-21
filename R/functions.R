@@ -6,8 +6,10 @@
 #' @rdname list_to_dataframe
 #' @export
 list_to_dataframe = function(list) {
-    data.frame(gene_set = rep(names(list), times = sapply(list, length)),
+    df = data.frame(gene_set = rep(names(list), times = sapply(list, length)),
                gene = unlist(list))
+    rownames(df) = NULL
+    df
 }
 
 

@@ -6,12 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 5-01: Similarities of terms}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-
-```{r}
-library(GSEAtraining)
-```
 
 There are two types of methods to calculate similarities between functional terms.
 
@@ -22,6 +22,7 @@ There are two types of methods to calculate similarities between functional term
 We demonstrate it with significant terms from an ORA analysis.
 
 ```{r}
+library(GSEAtraining)
 lt = readRDS(system.file("extdata", "ora.rds", package = "GSEAtraining"))
 diff_gene = lt$diff_gene
 diff_gene = convert_to_entrez_id(diff_gene)

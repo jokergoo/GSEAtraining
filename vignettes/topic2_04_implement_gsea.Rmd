@@ -6,12 +6,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 2-04: Implement GSEA from scratch}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-
-```{r}
-library(GSEAtraining)
-```
 
 
 In this document, we will implement the two versions of GSEA in R, using the p53 dataset
@@ -82,7 +81,7 @@ s = sort(s, decreasing = TRUE)
 Next we first implement the original GSEA method, which was proposed in Mootha et al., 2003.
 
 
-We calculate the cummulative probability of a gene being in a gene set $G$. At position $p$ in the
+We calculate the cummulative probability of a gene being in a gene set $G_k$. At position $p$ in the
 sorted gene score vector:
 
 $$ f_{1p} = \frac{1}{n_k} \sum_{i=1}^p I(g_i \in G_k) $$
@@ -98,7 +97,7 @@ binary_set = l_set + 0
 f1 = cumsum(binary_set)/sum(binary_set)
 ```
 
-Here in the calculatio of `f1`, `sum(l_set)` is $n_k$, `cumsum(l_set)` is $\sum_{i=1}^p I(g_i \in G_k)$.
+Here in the calculation of `f1`, `sum(l_set)` is $n_k$, `cumsum(l_set)` is $\sum_{i=1}^p I(g_i \in G_k)$.
 
 Similarly, we calculate the cummulative distribution of a gene not in the gene set.
 
@@ -126,7 +125,7 @@ abline(h = 0, lty = 2, col = "grey")
 points(which(l_set), rep(0, sum(l_set)), pch = "|", col = "red")
 ```
 
-So, a large value of `f1 - f21` means the genes are more like to be in the gene set for those locating at `1..p`.
+So, a large value of `f1 - f2` means the genes are more like to be in the gene set for those locating at `1..p`.
 
 The enrichment score (ES) defined as `max(f1 - f2)` is:
 
@@ -145,7 +144,8 @@ abline(v = which.max(f1 - f2), lty = 3, col = "blue")
 ```
 
 The statistic `es` actually is the Kolmogorov-Smirnov statistics, thus, we can
-directly apply the KS test:
+directly apply the KS test where the two vectors for the KS test are the positions
+on the sorted gene list.
 
 ```{r}
 ks.test(which(l_set), which(l_other))
@@ -299,7 +299,7 @@ The new p-value:
 sum(es_rand >= es)/1000
 ```
 
-1/1000, < 0.001
+The minimal p-value from 1000 permutations is 1/1000, so zeor here means p-value < 0.001.
 
 And the null distribution of ES:
 
@@ -325,7 +325,7 @@ easy to implement:
 ```{r}
 # s: a vector of pre-calcualted gene-level scores
 # s should be sorted
-calculate_es_v2_gene_perm = function(s, geneset, perm = FALSE, power = 1) {
+calculate_es_v2_gene_perm = function(s, geneset, perm = FALSE, plot = FALSE, power = 1) {
 	
 	if(perm) {
 	    # s is still sorted, but the gene labels are randomly shuffled
@@ -340,6 +340,13 @@ calculate_es_v2_gene_perm = function(s, geneset, perm = FALSE, power = 1) {
 
 	l_other = !l_set
 	f2 = cumsum(l_other)/sum(l_other)
+
+	if(plot) {
+        plot(f1 - f2, type = "l", xlab = "sorted genes")
+        abline(h = 0, lty = 2, col = "grey")
+        points(which(l_set), rep(0, sum(l_set)), pch = "|", col = "red")
+        abline(v = which.max(f1 - f2), lty = 3, col = "blue")
+    }
 
 	max(f1 - f2)
 }
@@ -358,10 +365,16 @@ s = (rowMeans(m1) - rowMeans(m2))/(rowSds(m1) + rowSds(m2))
 s = sort(s, decreasing = TRUE)  # must be pre-sorted
 ```
 
-We calculate the null distribution of ES from gene permutation:
+The GSEA plot under gene permutation:
 
 ```{r}
-es = calculate_es_v2_gene_perm(s, geneset)
+es = calculate_es_v2_gene_perm(s, geneset, plot = TRUE)
+```
+
+We calculate the null distribution of ES from gene permutation:
+
+
+```{r}
 es_rand = numeric(1000)
 for(i in 1:1000) {
 	es_rand[i] = calculate_es_v2_gene_perm(s, geneset, perm = TRUE)
@@ -370,7 +383,7 @@ for(i in 1:1000) {
 sum(es_rand >= es)/1000
 ```
 
-also < 0.001
+The real p-value is also < 0.001.
 
 The null distribution of ES from gene permutation:
 
@@ -387,11 +400,6 @@ Taking `es` and `es_rand` calculated previously, NES is calculated as
 es/mean(es_rand)
 ```
 
-You can also call NES as fold enrichment, the log2 fold enrichment is also widely used:
-
-```{r}
-log2(es/mean(es_rand))
-```
 
 NES does not take into account of the dispersion of `es_rand`, sometimes z-scores is used instead:
 
@@ -418,6 +426,7 @@ go over each of the 50 hallmark gene sets.
 The Hallmark gene sets from MSigDB
 
 ```{r}
+library(GSEAtraining)
 gs_hallmark = get_msigdb(version = "2023.2.Hs", collection = "h.all", gene_id_type = "symbol")
 n_gs = length(gs_hallmark)
 ```
@@ -499,8 +508,12 @@ Compare ES, NES, z-scores, and p-values:
 
 ```{r, fig.width = 10, fig.height = 10}
 par(mfrow = c(2, 2))
-plot(df1$es, df2$es, main = "ES")
-plot(df1$nes, df2$nes, main = "NES", xlim = c(0, 2.5), ylim = c(0, 2.5))
-plot(df1$z, df2$z, main = "Z-score", xlim = c(0, 4), ylim = c(0, 4))
-plot(df1$p_value, df2$p_value, main = "P-value")
+plot(df1$es, df2$es, main = "ES",
+	xlab = "sample permutation", ylab = "gene permutation")
+plot(df1$nes, df2$nes, main = "NES", xlim = c(0, 2.5), ylim = c(0, 2.5),
+	xlab = "sample permutation", ylab = "gene permutation")
+plot(df1$z, df2$z, main = "Z-score",
+	xlab = "sample permutation", ylab = "gene permutation")
+plot(df1$p_value, df2$p_value, main = "P-value",
+	xlab = "sample permutation", ylab = "gene permutation")
 ```

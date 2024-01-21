@@ -6,12 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 3-02: Local GREAT analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-
-```{r}
-library(GSEAtraining)
-```
 
 ## Basic usage
 
@@ -108,6 +108,13 @@ reduce the false positives. Examples are:
 - regions with certain level of gene densities
 - exons (coding regions)
 
+## Extend from the complete gene
+
+This feature is only available in the devel version of **rGREAT**.
+
+```r
+great(gr, "BP", "hg19", extend_from = "gene")
+```
 
 ## Using other gene sets
 
@@ -229,6 +236,8 @@ As we have already introduced, retrieve GO gene sets for an organism is easy:
 library(AnnotationHub)
 ah = AnnotationHub()
 orgdb = ah[["AH112418"]]
+
+library(GSEAtraining)
 gs = get_GO_gene_sets_from_orgdb(orgdb, "BP")
 gs[1:2]
 ```

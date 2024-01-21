@@ -6,6 +6,10 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-02: Get pathways from KEGG}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 <style>
@@ -17,10 +21,6 @@ blockquote {
     border-left: 6px #CCCCCC solid;
 }
 </style>
-
-```{r}
-library(GSEAtraining)
-```
 
 KEGG is a comprehensive database which not only contains pathways but also a large variaty 
 of other information. The entrence of getting KEGG data programmatically is via the KEGG REST API.
@@ -181,10 +181,10 @@ head(lt$KEGGPATHID2NAME)
 #### Practice 1
 
 In the previous example, we obtained the mapping between genes and KEGG pathways for human, using the
-organism code of `"hsa"`. Since human is very well-studied and everyone knows `"hsa"` is for human. What if
+organism code of `"hsa"`. Since human is very well-studied and everyone knows `"hsa"` is for human, what if
 you are studying dogs? Try to find out the organism code for dog and get the gene-pathway mappings for dog.
 
-Hint: use the `list` operator in KEGG API and list all organisms.
+Hint: use the `list` operator in KEGG API and search for dog.
 
 #### Solution
 

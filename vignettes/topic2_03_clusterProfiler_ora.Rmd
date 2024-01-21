@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 2-03: Use clusterProfiler for ORA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 Let's start with a vector of DE genes:
 
@@ -34,6 +35,7 @@ We convert `diff_gene` to Entrez IDs. Note some genes may be lost
 due to the conversion.
 
 ```{r}
+library(GSEAtraining)
 diff_gene = convert_to_entrez_id(diff_gene)
 head(diff_gene)
 length(diff_gene)
@@ -69,7 +71,7 @@ head(tb)
 
 ```{r}
 library(DOSE)
-tb = enrichDO(gene = diff_gene, ont = "DO")
+tb = enrichDO(gene = diff_gene)
 head(tb)
 ```
 
@@ -131,12 +133,15 @@ plot(euler(list("default_background" = tb1$ID[tb1$p.adjust < 0.05],
 1. GO enrichment
 
 `enrichGO()` accepts an `OrgDb` object as the source of the GO gene sets.
-We take pig as an example.
+We take pig as an example. `random_genes()` is from **GSEAtraining** package.
 
 ```{r}
 library(org.Ss.eg.db)
 diff_gene = random_genes(org.Ss.eg.db, 1000, "ENTREZID")
 ```
+
+Here we set `pvalueCutoff = 1, qvalueCutoff = 1` because genes are random genes and
+it is expected there won't be too much significant terms left.
 
 
 ```{r, message = FALSE}
@@ -170,42 +175,40 @@ head(tb)
 
 ## Examples for less well-studied organisms
 
+### When an `OrgDb` object is avaiable
+
+You can use `enrichGO()` as long as you have an `OrgDb` object:
+
 Taking dolphin as an example. 
 
 ```{r}
 library(AnnotationHub)
 ah = AnnotationHub()
 org_db = ah[["AH112418"]]
-gs = get_GO_gene_sets_from_orgdb(org_db, "BP", as_table = TRUE)
 
 diff_gene = random_genes(org_db, 1000, "ENTREZID")
-tb = enricher(diff_gene, TERM2GENE = gs[, 2:1], pvalueCutoff = 1, qvalueCutoff = 1)
-head(tb)
-```
-
-And we can add GO full names to the table:
-
-```{r}
-library(GO.db)
-tb = tb@result
-tb$Name = Term(GOTERM[tb$ID])
-head(tb)
-```
-
-or 
-
-```{r, eval = FALSE}
-enricher(diff_gene, TERM2GENE = gs[, 2:1], TERM2NAME = toTable(GOTERM)[, 2:3],
-	pvalueCutoff = 1, qvalueCutoff = 1)
-```
-
-
-Since `org_db` is an `OrgDb` object, we can directly use `enrichGO()`:
-
-```{r}
 tb = enrichGO(diff_gene, ont = "BP", OrgDb = org_db, 
 	pvalueCutoff = 1, qvalueCutoff = 1)
+head(tb)
 ```
+
+### enrichKEGG() also supports many other orgainsms
+
+```r
+enrichKEGG(gene = diff_gene, organism = ...)
+```
+
+### Manually construct the gene sets
+
+
+We have introduced many ways to obtain gene sets for less well-studies organisms.
+The only thing to do here is to convert gene sets to a two-column data frame where gene sets 
+are in the first column and genes are in the second column. Then use `enricher()`.
+
+```r
+enricher(diff_gene, TERM2GENE = ...)
+```
+
 
 ## Look at the `tb` object
 
@@ -217,6 +220,13 @@ str(tb)
 ```
 
 To convert it into a "real" table, DO NOT use `as.data.frame()` which only returns the significant terms, use `tb@result`.
+
+Also some columns in `tb@result` are not in the proper format, e.g. `"GeneRatio"` and `"BgRatio"` where numbers should be in numeric mode while not characters. In **GSEAtraining**, there is a `add_more_columns()` which adds more columns to the `tb@result` table.
+
+```{r}
+tb2 = add_more_columns(tb)
+head(tb2@result)
+```
 
 
 ## Practice 

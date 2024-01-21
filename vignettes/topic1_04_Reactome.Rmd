@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-04: Get pathways from Reactome}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 Reactome is another popular pathway database. It organises pathways in a
 hierarchical manner, which contains pathways and sub pathways or pathway
@@ -43,12 +44,13 @@ p2n = toTable(reactomePATHID2NAME)
 head(p2n)
 ```
 
-In the previous code, we use the function `toTable()` to retrieve the data as data frames. You can also try `as.list()` on the two objects and compare the output.
+In the previous code, we use the function `toTable()` to retrieve the data as a data frame. You can also try `as.list()` on the two objects and compare the output.
 
-Reactome also contains pathway for multiple organisms. In the reactome ID, teh second section contains the organism, e.g. in previous output `HSA`. 
+Reactome contains pathway for multiple organisms. In the reactome ID, teh second section contains the organism, e.g. in previous output `HSA`. 
 
 ```{r}
 sort(table( gsub("^R-(\\w+)-\\d+$", "\\1", p2n[, 1]) ))
+barplot(sort(table( gsub("^R-(\\w+)-\\d+$", "\\1", p2n[, 1]) )))
 ```
 
  
@@ -78,7 +80,7 @@ Making the intervals smaller is better:
 hist(n_gene, nc = 100)
 ```
 
-Pathways more more than 2000 genes:
+Pathways more than 2000 genes:
 
 ```{r}
 n_gene[n_gene > 2000]

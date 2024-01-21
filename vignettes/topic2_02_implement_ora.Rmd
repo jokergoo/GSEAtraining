@@ -6,14 +6,15 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 2-02: Implement ORA from stratch}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 
-```{r}
-library(GSEAtraining)
-```
 
-Implementing ORA is very simple. As long as genes and gene sets are already in the correct ID types and format, the implementation of ORA only needs several lines.
+Implementing ORA is very simple. As long as genes and gene sets are already in the correct ID types and formats, the implementation of ORA only needs several lines.
 
 
 Three inputs for ORA:
@@ -111,14 +112,13 @@ ora = function(genes, gene_sets, universe) {
 
 We can further improve the function by:
 
-1. set the default of `universe` as the total genes in `gene_sets`
+1. set the default of `universe` to the total genes in `gene_sets`
 2. intersect `genes` and `gene_sets` to `universe`. Note this step also removes duplicated genes
-3. filter the result by the minimal number of DE genes in gene sets
-4. add adjusted log2 fold enrichment and p-values
-5. order the result table by the significance
+3. add adjusted log2 fold enrichment and p-values
+4. order the result table by the significance
 
 ```{r}
-ora = function(genes, gene_sets, universe = NULL, min_hits = 3) {
+ora = function(genes, gene_sets, universe = NULL) {
 
     if(is.null(universe)) {
         universe = unique(unlist(gene_sets))
@@ -148,17 +148,19 @@ ora = function(genes, gene_sets, universe = NULL, min_hits = 3) {
         log2fe = log2(x*n_universe/k/m),
         p_value = p
     )
-    df = df[df$hits >= min_hits, , drop = FALSE]
+
     df$p_adjust = p.adjust(df$p_value, "BH")
     rownames(df) = df$gene_set
     df[order(df$p_adjust, df$p_value), ,drop = FALSE]
 }
 ```
 
-Let's try our `ora()` with 1000 random genes on the MSigDB hallmark gene sets:
+Let's try our `ora()` with 1000 random genes on the MSigDB hallmark gene sets.
+`get_msigdb()` is from the **GSEAtraining** package.
 
 ```{r}
 library(org.Hs.eg.db)
+library(GSEAtraining)
 gs = get_msigdb(version = "2023.2.Hs", collection = "h.all")
 genes = random_genes(org.Hs.eg.db, 1000, "ENTREZID")
 
@@ -188,9 +190,11 @@ head(de)
 Take the `symbol` and `p_value` columns, set cutoff of `p_value` to 0.05, 0.01
 and 0.001 respectively to filter the significant DE genes (of course, in
 applications, you need to correct p-values), apply `ora()` to the three DE
-gene lists using the GO BP gene sets and compare the ORA results (the whatever comparison
+gene lists using the GO BP gene sets (think how to obtain the GO gene sets from **org.Hs.eg.db**) and compare the ORA results (the whatever comparison
 you can think of).
 
+If you EntreZ ID in the gene sets, you need to convert gene symbols for the DE genes to EntreZ IDs.
+But you can also choose to use gene symbols in the gene sets.
 
 #### Solution
 
@@ -206,7 +210,7 @@ length(de_genes_2)
 length(de_genes_3)
 ```
 
-Grt the GO BP gene sets. Note genes in `de_genes_*` are symbols, thus genes in gene sets
+Get the GO BP gene sets. Note genes in `de_genes_*` are symbols, thus genes in gene sets
 should also be symbols.
 
 ```{r}
@@ -219,11 +223,8 @@ We perform ORA for the three DE gene lists.
 
 ```{r}
 tb1 = ora(de_genes_1, gs)
-nrow(tb1)
 tb2 = ora(de_genes_2, gs)
-nrow(tb2)
 tb3 = ora(de_genes_3, gs)
-nrow(tb3)
 ```
 
 Compare number of significant GO terms:
@@ -234,7 +235,8 @@ sum(tb2$p_adjust < 0.05)
 sum(tb3$p_adjust < 0.05)
 ```
 
-Actually we can see gene set enrichment analysis is more robust than DE analysis.
+Actually we can see gene set enrichment analysis is a very robust method
+which is not sensitive to DE cutoffs (at least for this dataset).
 
 Make a Venn (Euler) diagram:
 

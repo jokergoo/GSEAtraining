@@ -6,11 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Topic 1-03: Get pathways from MSigDB}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(GSEAtraining)
-```
 
 ## The .gmt data format for gene sets
 
@@ -40,6 +41,18 @@ ln = strsplit(ln, "\t")
 gs = lapply(ln, function(x) x[-(1:2)])
 names(gs) = sapply(ln, function(x) x[1])
 gs[1:2]
+```
+
+In **rGREAT** package, there is a helper function `read_gmt()` which can read gene sets 
+from `.gmt` file and also does gene ID conversion.
+
+```{r}
+library(rGREAT)
+gs = read_gmt("h.all.v2023.2.Hs.symbols.gmt")
+
+gs2 = read_gmt("h.all.v2023.2.Hs.symbols.gmt", 
+    from = "SYMBOL", to = "ENSEMBL", orgdb = "org.Hs.eg.db")
+gs2[1:2]
 ```
 
 ```{r, echo = FALSE}
@@ -137,6 +150,7 @@ We also have several functions in **GSEAtraining** to retrieve gene sets from MS
 It directly downloads data from MSigDB web server.
 
 ```{r}
+library(GSEAtraining)
 list_msigdb_versions()
 list_msigdb_collections("2023.2.Hs")
 lt = get_msigdb(version = "2023.2.Hs", collection = "h.all")
@@ -151,7 +165,7 @@ lt[1:2]
 #### Practice 1
 
 The gene set resource on https://maayanlab.cloud/Enrichr/#libraries is very useful. You may
-want to use it some say in the future. Take one gene set collection (e.g. the COVID-19 related gene sets), download the corresponding gene set file (in `.gmt` format) and try to read into R as a list.
+want to use it some say in the future. Take one gene set collection (e.g. the COVID-19 related gene sets), download the corresponding gene set file (in `.gmt` format) and try to read into R as a list or a two-column data frame.
 
 #### Solution
 
@@ -165,6 +179,22 @@ names(gs) = sapply(ln, function(x) x[1])
 gs[1:2]
 ```
 
+Convert `gs` to a data frame
+
+```{r}
+df = data.frame(
+    geneset = rep(names(gs), times = sapply(gs, length)),
+    gene = unlist(gs)
+)
+head(df)
+```
+
+Or use the `list_to_dataframe()` function in **GSEAtraining**:
+
+```{r}
+df = list_to_dataframe(gs)
+head(df)
+```
 
 ```{r, echo = FALSE}
 invisible(file.remove("covid-19.gmt"))
