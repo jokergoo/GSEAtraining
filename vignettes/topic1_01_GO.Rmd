@@ -341,7 +341,7 @@ contains GO terms from the three namespaces and the `as.list()` cannot distingui
 ```r
 tb[tb$Ontology == "BP", ]
 
-onto = Ontology(GOTREM)
+onto = Ontology(GOTERM)
 lt[ onto(names(lt)) == "BP" ]
 ```
 

@@ -148,7 +148,7 @@
                         <h4 data-toc-skip class="author">Zuguang Gu <a href="mailto:z.gu@dkfz.de" class="email">z.gu@dkfz.de</a>
 </h4>
             
-            <h4 data-toc-skip class="date">2024-01-21</h4>
+            <h4 data-toc-skip class="date">2024-01-25</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jokergoo/GSEAtraining/blob/HEAD/vignettes/topic5_01_similarity.Rmd" class="external-link"><code>vignettes/topic5_01_similarity.Rmd</code></a></small>
       <div class="hidden name"><code>topic5_01_similarity.Rmd</code></div>
@@ -169,7 +169,7 @@
 <span><span class="va">diff_gene</span> <span class="op">=</span> <span class="va">lt</span><span class="op">$</span><span class="va">diff_gene</span></span>
 <span><span class="va">diff_gene</span> <span class="op">=</span> <span class="fu"><a href="../reference/convert_to_entrez_id.html">convert_to_entrez_id</a></span><span class="op">(</span><span class="va">diff_gene</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## </span></span></code></pre>
-<pre><code><span><span class="co">##   gene id might be SYMBOL (p =  1.000 )</span></span></code></pre>
+<pre><code><span><span class="co">##   gene id might be SYMBOL (p =  0.980 )</span></span></code></pre>
 <pre><code><span><span class="co">## 'select()' returned 1:many mapping between keys and columns</span></span></code></pre>
 <div class="section level2">
 <h2 id="similarity-based-on-gene-counts">Similarity based on gene counts<a class="anchor" aria-label="anchor" href="#similarity-based-on-gene-counts"></a>
@@ -471,12 +471,15 @@
 <h3 id="based-on-gene-annotation">Based on gene annotation<a class="anchor" aria-label="anchor" href="#based-on-gene-annotation"></a>
 </h3>
 <div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">dag</span> <span class="op">=</span> <span class="fu">create_ontology_DAG_from_GO_db</span><span class="op">(</span><span class="st">"BP"</span>, org_db <span class="op">=</span> <span class="va">org.Hs.eg.db</span><span class="op">)</span></span></code></pre></div>
-<p>The <em>Sim_Lin_1998</em> is one of the classic semantic similarity method.</p>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jokergoo/simona" class="external-link">simona</a></span><span class="op">)</span></span>
+<span><span class="va">simona_opt</span><span class="op">$</span><span class="va">verbose</span> <span class="op">=</span> <span class="cn">FALSE</span></span></code></pre></div>
 <div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">m</span> <span class="op">=</span> <span class="fu">term_sim</span><span class="op">(</span><span class="va">dag</span>, <span class="va">sig_go</span>, method <span class="op">=</span> <span class="st">"Sim_Lin_1998"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">dag</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/simona/man/create_ontology_DAG_from_GO_db.html" class="external-link">create_ontology_DAG_from_GO_db</a></span><span class="op">(</span><span class="st">"BP"</span>, org_db <span class="op">=</span> <span class="va">org.Hs.eg.db</span><span class="op">)</span></span></code></pre></div>
+<p>The <em>Sim_Lin_1998</em> is one of the classic semantic similarity method.</p>
+<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/simona/man/term_sim.html" class="external-link">term_sim</a></span><span class="op">(</span><span class="va">dag</span>, <span class="va">sig_go</span>, method <span class="op">=</span> <span class="st">"Sim_Lin_1998"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## remove 16 terms with no annotation.</span></span></code></pre>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="op">=</span> <span class="cn">NA</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/ComplexHeatmap/man/Heatmap.html" class="external-link">Heatmap</a></span><span class="op">(</span><span class="va">m</span>, name <span class="op">=</span> <span class="st">"Sim_Lin_1998"</span>, show_row_names <span class="op">=</span> <span class="cn">FALSE</span>, show_column_names <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>, show_column_dend <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
@@ -486,8 +489,8 @@
 <h3 id="purely-based-on-the-topology">Purely based on the topology<a class="anchor" aria-label="anchor" href="#purely-based-on-the-topology"></a>
 </h3>
 <p>The _Sim_WP_1994__ is one of the classic semantic similarity method.</p>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">m</span> <span class="op">=</span> <span class="fu">term_sim</span><span class="op">(</span><span class="va">dag</span>, <span class="va">sig_go</span>, method <span class="op">=</span> <span class="st">"Sim_WP_1994"</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/simona/man/term_sim.html" class="external-link">term_sim</a></span><span class="op">(</span><span class="va">dag</span>, <span class="va">sig_go</span>, method <span class="op">=</span> <span class="st">"Sim_WP_1994"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="op">=</span> <span class="cn">NA</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/ComplexHeatmap/man/Heatmap.html" class="external-link">Heatmap</a></span><span class="op">(</span><span class="va">m</span>, name <span class="op">=</span> <span class="st">"Sim_WP_1994"</span>, show_row_names <span class="op">=</span> <span class="cn">FALSE</span>, show_column_names <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>, show_column_dend <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
@@ -496,8 +499,8 @@
 <div class="section level3">
 <h3 id="visualize-the-ontology">Visualize the ontology<a class="anchor" aria-label="anchor" href="#visualize-the-ontology"></a>
 </h3>
-<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">dag_circular_viz</span><span class="op">(</span><span class="va">dag</span>, highlight <span class="op">=</span> <span class="va">sig_go</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/simona/man/dag_viz.html" class="external-link">dag_circular_viz</a></span><span class="op">(</span><span class="va">dag</span>, highlight <span class="op">=</span> <span class="va">sig_go</span><span class="op">)</span></span></code></pre></div>
 <p><img src="topic5_01_similarity_files/figure-html/unnamed-chunk-16-1.png" width="960"></p>
 </div>
 </div>

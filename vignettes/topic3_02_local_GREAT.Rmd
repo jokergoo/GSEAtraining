@@ -96,8 +96,8 @@ Background can be set via `backgroud` and `excluce` arguments.
 gap = getGapFromUCSC("hg19", paste0("chr", c(1:22, "X", "Y")))
 great(gr, "MSigDB:H", "hg19", exclude = gap)
 
-great(gr, "GO:BP", background = paste0("chr", 1:22))
-great(gr, "GO:BP", exclude = c("chrX", "chrY"))
+great(gr, "GO:BP", "hg19", background = paste0("chr", 1:22))
+great(gr, "GO:BP", "hg19", exclude = c("chrX", "chrY"))
 ```
 
 Restricting the anallysis in a certain type of genome background helps to

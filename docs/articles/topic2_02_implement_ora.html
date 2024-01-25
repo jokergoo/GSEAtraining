@@ -148,7 +148,7 @@
                         <h4 data-toc-skip class="author">Zuguang Gu <a href="mailto:z.gu@dkfz.de" class="email">z.gu@dkfz.de</a>
 </h4>
             
-            <h4 data-toc-skip class="date">2024-01-21</h4>
+            <h4 data-toc-skip class="date">2024-01-25</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jokergoo/GSEAtraining/blob/HEAD/vignettes/topic2_02_implement_ora.Rmd" class="external-link"><code>vignettes/topic2_02_implement_ora.Rmd</code></a></small>
       <div class="hidden name"><code>topic2_02_implement_ora.Rmd</code></div>
@@ -340,20 +340,20 @@ width:400px;
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="fu"><a href="../reference/ora.html">ora</a></span><span class="op">(</span><span class="va">genes</span>, <span class="va">gs</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">##                                                  gene_set hits n_genes n_gs</span></span>
-<span><span class="co">## HALLMARK_PANCREAS_BETA_CELLS HALLMARK_PANCREAS_BETA_CELLS    6     204   40</span></span>
-<span><span class="co">## HALLMARK_MYC_TARGETS_V1           HALLMARK_MYC_TARGETS_V1   15     204  200</span></span>
-<span><span class="co">## HALLMARK_DNA_REPAIR                   HALLMARK_DNA_REPAIR   12     204  150</span></span>
-<span><span class="co">## HALLMARK_E2F_TARGETS                 HALLMARK_E2F_TARGETS   14     204  200</span></span>
-<span><span class="co">## HALLMARK_SPERMATOGENESIS         HALLMARK_SPERMATOGENESIS   10     204  135</span></span>
-<span><span class="co">## HALLMARK_UV_RESPONSE_DN           HALLMARK_UV_RESPONSE_DN   10     204  144</span></span>
-<span><span class="co">##                              n_total    log2fe     p_value  p_adjust</span></span>
-<span><span class="co">## HALLMARK_PANCREAS_BETA_CELLS    4384 1.6886411 0.009621835 0.4810918</span></span>
-<span><span class="co">## HALLMARK_MYC_TARGETS_V1         4384 0.6886411 0.044087507 0.7538680</span></span>
-<span><span class="co">## HALLMARK_DNA_REPAIR             4384 0.7817506 0.045232078 0.7538680</span></span>
-<span><span class="co">## HALLMARK_E2F_TARGETS            4384 0.5891055 0.080437944 0.9613044</span></span>
-<span><span class="co">## HALLMARK_SPERMATOGENESIS        4384 0.6707192 0.096250874 0.9613044</span></span>
-<span><span class="co">## HALLMARK_UV_RESPONSE_DN         4384 0.5776098 0.131779770 0.9613044</span></span></code></pre>
+<pre><code><span><span class="co">##                                                      gene_set hits n_genes n_gs</span></span>
+<span><span class="co">## HALLMARK_HEDGEHOG_SIGNALING       HALLMARK_HEDGEHOG_SIGNALING    5     214   36</span></span>
+<span><span class="co">## HALLMARK_XENOBIOTIC_METABOLISM HALLMARK_XENOBIOTIC_METABOLISM   16     214  200</span></span>
+<span><span class="co">## HALLMARK_ANDROGEN_RESPONSE         HALLMARK_ANDROGEN_RESPONSE    9     214  101</span></span>
+<span><span class="co">## HALLMARK_KRAS_SIGNALING_DN         HALLMARK_KRAS_SIGNALING_DN   15     214  200</span></span>
+<span><span class="co">## HALLMARK_MYOGENESIS                       HALLMARK_MYOGENESIS   15     214  200</span></span>
+<span><span class="co">## HALLMARK_APOPTOSIS                         HALLMARK_APOPTOSIS   12     214  161</span></span>
+<span><span class="co">##                                n_total    log2fe    p_value  p_adjust</span></span>
+<span><span class="co">## HALLMARK_HEDGEHOG_SIGNALING       4384 1.5085682 0.02899916 0.6219054</span></span>
+<span><span class="co">## HALLMARK_XENOBIOTIC_METABOLISM    4384 0.7127089 0.03354442 0.6219054</span></span>
+<span><span class="co">## HALLMARK_ANDROGEN_RESPONSE        4384 0.8682786 0.05667660 0.6219054</span></span>
+<span><span class="co">## HALLMARK_KRAS_SIGNALING_DN        4384 0.6195995 0.06219054 0.6219054</span></span>
+<span><span class="co">## HALLMARK_MYOGENESIS               4384 0.6195995 0.06219054 0.6219054</span></span>
+<span><span class="co">## HALLMARK_APOPTOSIS                4384 0.6106107 0.09262817 0.6763795</span></span></code></pre>
 <p>The only restriction of <code><a href="../reference/ora.html">ora()</a></code> is the ID type for <code>genes</code> should be the same as in <code>gene_sets</code>.</p>
 <div class="section level2">
 <h2 id="practice">Practice<a class="anchor" aria-label="anchor" href="#practice"></a>

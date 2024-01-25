@@ -148,7 +148,7 @@
                         <h4 data-toc-skip class="author">Zuguang Gu <a href="mailto:z.gu@dkfz.de" class="email">z.gu@dkfz.de</a>
 </h4>
             
-            <h4 data-toc-skip class="date">2024-01-21</h4>
+            <h4 data-toc-skip class="date">2024-01-25</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jokergoo/GSEAtraining/blob/HEAD/vignettes/topic4_02_GSVA.Rmd" class="external-link"><code>vignettes/topic4_02_GSVA.Rmd</code></a></small>
       <div class="hidden name"><code>topic4_02_GSVA.Rmd</code></div>
@@ -213,46 +213,46 @@
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">tb</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##                                                        ID</span></span>
 <span><span class="co">## P53_UP                                             P53_UP</span></span>
-<span><span class="co">## hsp27Pathway                                 hsp27Pathway</span></span>
 <span><span class="co">## HTERT_UP                                         HTERT_UP</span></span>
+<span><span class="co">## hsp27Pathway                                 hsp27Pathway</span></span>
 <span><span class="co">## p53Pathway                                     p53Pathway</span></span>
-<span><span class="co">## p53hypoxiaPathway                       p53hypoxiaPathway</span></span>
 <span><span class="co">## GPCRs_Class_A_Rhodopsin-like GPCRs_Class_A_Rhodopsin-like</span></span>
+<span><span class="co">## p53hypoxiaPathway                       p53hypoxiaPathway</span></span>
 <span><span class="co">##                                               Description setSize</span></span>
 <span><span class="co">## P53_UP                                             P53_UP      40</span></span>
-<span><span class="co">## hsp27Pathway                                 hsp27Pathway      15</span></span>
 <span><span class="co">## HTERT_UP                                         HTERT_UP     109</span></span>
+<span><span class="co">## hsp27Pathway                                 hsp27Pathway      15</span></span>
 <span><span class="co">## p53Pathway                                     p53Pathway      16</span></span>
-<span><span class="co">## p53hypoxiaPathway                       p53hypoxiaPathway      20</span></span>
 <span><span class="co">## GPCRs_Class_A_Rhodopsin-like GPCRs_Class_A_Rhodopsin-like     111</span></span>
+<span><span class="co">## p53hypoxiaPathway                       p53hypoxiaPathway      20</span></span>
 <span><span class="co">##                              enrichmentScore       NES       pvalue</span></span>
-<span><span class="co">## P53_UP                            -0.6132568 -2.104150 1.749934e-06</span></span>
-<span><span class="co">## hsp27Pathway                      -0.7841899 -2.155634 4.936099e-06</span></span>
-<span><span class="co">## HTERT_UP                           0.3612304  1.931569 1.122005e-05</span></span>
-<span><span class="co">## p53Pathway                        -0.7524677 -2.117979 2.127312e-05</span></span>
-<span><span class="co">## p53hypoxiaPathway                 -0.6940780 -2.067152 2.933105e-05</span></span>
-<span><span class="co">## GPCRs_Class_A_Rhodopsin-like      -0.4503613 -1.836960 4.218361e-05</span></span>
+<span><span class="co">## P53_UP                            -0.6132568 -2.100155 3.300502e-06</span></span>
+<span><span class="co">## HTERT_UP                           0.3612304  1.912660 4.262773e-06</span></span>
+<span><span class="co">## hsp27Pathway                      -0.7841899 -2.125050 6.752196e-06</span></span>
+<span><span class="co">## p53Pathway                        -0.7524677 -2.062641 1.641483e-05</span></span>
+<span><span class="co">## GPCRs_Class_A_Rhodopsin-like      -0.4503613 -1.802668 1.558105e-05</span></span>
+<span><span class="co">## p53hypoxiaPathway                 -0.6940780 -2.002951 6.703108e-05</span></span>
 <span><span class="co">##                                  p.adjust       qvalue rank</span></span>
-<span><span class="co">## P53_UP                       0.0006912237 0.0006207659  464</span></span>
-<span><span class="co">## hsp27Pathway                 0.0009748795 0.0008755081  882</span></span>
-<span><span class="co">## HTERT_UP                     0.0014773060 0.0013267212 1523</span></span>
-<span><span class="co">## p53Pathway                   0.0021007205 0.0018865898  252</span></span>
-<span><span class="co">## p53hypoxiaPathway            0.0023171528 0.0020809607  741</span></span>
-<span><span class="co">## GPCRs_Class_A_Rhodopsin-like 0.0027770879 0.0024940136 2120</span></span>
+<span><span class="co">## P53_UP                       0.0008418976 0.0007583249  464</span></span>
+<span><span class="co">## HTERT_UP                     0.0008418976 0.0007583249 1523</span></span>
+<span><span class="co">## hsp27Pathway                 0.0008890392 0.0008007868  882</span></span>
+<span><span class="co">## p53Pathway                   0.0012967719 0.0011680451  252</span></span>
+<span><span class="co">## GPCRs_Class_A_Rhodopsin-like 0.0012967719 0.0011680451 2120</span></span>
+<span><span class="co">## p53hypoxiaPathway            0.0044128797 0.0039748257  741</span></span>
 <span><span class="co">##                                                leading_edge</span></span>
 <span><span class="co">## P53_UP                        tags=22%, list=5%, signal=22%</span></span>
-<span><span class="co">## hsp27Pathway                  tags=53%, list=9%, signal=49%</span></span>
 <span><span class="co">## HTERT_UP                     tags=33%, list=15%, signal=28%</span></span>
+<span><span class="co">## hsp27Pathway                  tags=53%, list=9%, signal=49%</span></span>
 <span><span class="co">## p53Pathway                    tags=31%, list=2%, signal=31%</span></span>
-<span><span class="co">## p53hypoxiaPathway             tags=30%, list=7%, signal=28%</span></span>
 <span><span class="co">## GPCRs_Class_A_Rhodopsin-like tags=35%, list=21%, signal=28%</span></span>
+<span><span class="co">## p53hypoxiaPathway             tags=30%, list=7%, signal=28%</span></span>
 <span><span class="co">##                                                                                                                                                                                                                                                  core_enrichment</span></span>
 <span><span class="co">## P53_UP                                                                                                                                                                                                         NINJ1/PLK3/BBC3/TNFRSF6/BTG2/DDB2/MDM2/BAX/CDKN1A</span></span>
-<span><span class="co">## hsp27Pathway                                                                                                                                                                                                      HSPB1/ACTA1/MAPKAPK2/TNF/IL1A/BCL2/FAS/TNFRSF6</span></span>
 <span><span class="co">## HTERT_UP                                  DR1/MRPL49/DAP/AHR/EPHA2/LMO4/CDKN2A/KLF5/KIAA0063/WASF1/TSG101/ELF4/CCNH/KIAA0092/HYOU1/CDC6/DYRK1A/SFRS11/ADAM8/LHFPL2/ZNF165/RAE1/SH3BGR/TCTEL1/DDX10/HSF2/MAPK9/SLC1A5/EGFR/MCFD2/CBX5/RDBP/CDKN3/SNRPA1/CTH/GFPT1</span></span>
+<span><span class="co">## hsp27Pathway                                                                                                                                                                                                      HSPB1/ACTA1/MAPKAPK2/TNF/IL1A/BCL2/FAS/TNFRSF6</span></span>
 <span><span class="co">## p53Pathway                                                                                                                                                                                                                             CDK2/BCL2/MDM2/BAX/CDKN1A</span></span>
-<span><span class="co">## p53hypoxiaPathway                                                                                                                                                                                                               CSNK1D/HIC1/CPB2/MDM2/BAX/CDKN1A</span></span>
-<span><span class="co">## GPCRs_Class_A_Rhodopsin-like ADRA2C/CNR2/FPRL1/EDNRB/FPRL2/RGR/GALR3/OPRL1/NMBR/ADRB1/BDKRB1/RRH/PPYR1/CXCR3/HTR2B/CMKOR1/HTR7/OPRD1/GPR23/AGTR2/EDNRA/ADORA1/ADRA1D/DRD3/CCKBR/GPR44/DRD1/MC1R/HTR2C/CCR2/CCR8/HTR4/HTR1B/MTNR1B/CCBP2/F2RL2/GPR50/ADRA2A/NTSR2</span></span></code></pre>
+<span><span class="co">## GPCRs_Class_A_Rhodopsin-like ADRA2C/CNR2/FPRL1/EDNRB/FPRL2/RGR/GALR3/OPRL1/NMBR/ADRB1/BDKRB1/RRH/PPYR1/CXCR3/HTR2B/CMKOR1/HTR7/OPRD1/GPR23/AGTR2/EDNRA/ADORA1/ADRA1D/DRD3/CCKBR/GPR44/DRD1/MC1R/HTR2C/CCR2/CCR8/HTR4/HTR1B/MTNR1B/CCBP2/F2RL2/GPR50/ADRA2A/NTSR2</span></span>
+<span><span class="co">## p53hypoxiaPathway                                                                                                                                                                                                               CSNK1D/HIC1/CPB2/MDM2/BAX/CDKN1A</span></span></code></pre>
 <p>Let’s check the expression of genes in the p53Pathway:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">g</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/sets.html" class="external-link">intersect</a></span><span class="op">(</span><span class="va">gs</span><span class="op">[[</span><span class="st">"p53Pathway"</span><span class="op">]</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/row_colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">expr</span><span class="op">)</span><span class="op">)</span></span>

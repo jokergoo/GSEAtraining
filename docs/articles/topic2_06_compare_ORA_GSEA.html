@@ -148,7 +148,7 @@
                         <h4 data-toc-skip class="author">Zuguang Gu <a href="mailto:z.gu@dkfz.de" class="email">z.gu@dkfz.de</a>
 </h4>
             
-            <h4 data-toc-skip class="date">2024-01-21</h4>
+            <h4 data-toc-skip class="date">2024-01-25</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jokergoo/GSEAtraining/blob/HEAD/vignettes/topic2_06_compare_ORA_GSEA.Rmd" class="external-link"><code>vignettes/topic2_06_compare_ORA_GSEA.Rmd</code></a></small>
       <div class="hidden name"><code>topic2_06_compare_ORA_GSEA.Rmd</code></div>
@@ -167,7 +167,7 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jokergoo/GSEAtraining" class="external-link">GSEAtraining</a></span><span class="op">)</span></span>
 <span><span class="va">expr</span> <span class="op">=</span> <span class="fu"><a href="../reference/convert_to_entrez_id.html">convert_to_entrez_id</a></span><span class="op">(</span><span class="va">expr</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## </span></span></code></pre>
-<pre><code><span><span class="co">##   gene id might be SYMBOL (p =  0.750 )</span></span></code></pre>
+<pre><code><span><span class="co">##   gene id might be SYMBOL (p =  0.610 )</span></span></code></pre>
 <pre><code><span><span class="co">## 'select()' returned 1:many mapping between keys and columns</span></span></code></pre>
 <p><strong>ORA</strong></p>
 <p>We need to perform t-test or similar DE test to extract DE genes:</p>
@@ -218,7 +218,7 @@
 <pre><code><span><span class="co">## preparing geneSet collections...</span></span></code></pre>
 <pre><code><span><span class="co">## GSEA analysis...</span></span></code></pre>
 <pre><code><span><span class="co">## Warning in fgseaMultilevel(pathways = pathways, stats = stats, minSize =</span></span>
-<span><span class="co">## minSize, : There were 2 pathways for which P-values were not calculated</span></span>
+<span><span class="co">## minSize, : There were 3 pathways for which P-values were not calculated</span></span>
 <span><span class="co">## properly due to unbalanced (positive and negative) gene-level statistic values.</span></span>
 <span><span class="co">## For such pathways pval, padj, NES, log2err are set to NA. You can try to</span></span>
 <span><span class="co">## increase the value of the argument nPermSimple (for example set it nPermSimple</span></span>
