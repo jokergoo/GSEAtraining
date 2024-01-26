@@ -34,7 +34,7 @@ BiocManager::install(c("DBI", "DT", "RSQLite", "htmltools", "shiny", "Annotation
     "Orthology.eg.db", "microbenchmark", "ReactomePA", "DOSE", "org.Ss.eg.db",
     "CePa", "eulerr", "rGREAT", "goseq", "GSVA", "simplifyEnrichment", 
     "enrichplot", "ggplot2", "ComplexHeatmap", "circlize", "genefilter"))
-install.packages("https://jokergoo.github.io/GSEAtraining_0.99.0.tar.gz", repo = NULL, type = "source")
+install.packages("https://jokergoo.github.io/GSEAtraining_0.99.1.tar.gz", repo = NULL, type = "source")
 ```
 
 The practice materials are also available at https://jokergoo.github.io/GSEAtraining/.

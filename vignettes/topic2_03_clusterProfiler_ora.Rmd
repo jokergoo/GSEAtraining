@@ -104,6 +104,21 @@ tb = enrichGO(gene = diff_gene, ont = "BP", OrgDb = org.Hs.eg.db, universe = bg_
 head(tb)
 ```
 
+
+<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    background: #eee;
+    border-left: 6px #CCCCCC solid;
+}
+</style>
+
+> **Warning:** It seems when setting `universe`, the input gene list `diff_gene` is not intersected to `universe`
+> in the analysis. You can check the values in `GeneRatio` which is 777 for all DE genes, and this number is the same
+> as when `universe` is not manually set. So be careful with this "improper" behaviour.
+
 We can compare ORA with different backgrounds:
 
 ```{r}

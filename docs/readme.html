@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">GSEAtraining</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.99.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.99.1</span>
       </span>
     </div>
 
@@ -136,17 +136,19 @@
 <p>You should also update the following two packages from GitHub because the updates are only available on the bioc devel branch:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"jokergoo/simona"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"jokergoo/BioCartaImage"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"jokergoo/rGREAT"</span><span class="op">)</span></span></code></pre></div>
 <p>If you have errors with installing dependency packages, try to install them manually:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DBI"</span>, <span class="st">"DT"</span>, <span class="st">"RSQLite"</span>, <span class="st">"htmltools"</span>, <span class="st">"shiny"</span>, <span class="st">"AnnotationDbi"</span>, <span class="st">"matrixStats"</span>,</span>
 <span>    <span class="st">"GO.db"</span>, <span class="st">"org.Hs.eg.db"</span>, <span class="st">"KEGGREST"</span>, <span class="st">"clusterProfiler"</span>, <span class="st">"msigdbr"</span>,</span>
-<span>    <span class="st">"reactome.db"</span>, <span class="st">"BioCartaImage"</span>, <span class="st">"UniProtKeywords"</span>, <span class="st">"BioMartGOGeneSets"</span>, <span class="st">"AnnotationHub"</span>,</span>
-<span>    <span class="st">"BiocHubsShiny"</span>, <span class="st">"Orthology.eg.db"</span>, <span class="st">"microbenchmark"</span>, <span class="st">"ReactomePA"</span>, <span class="st">"DOSE"</span>, <span class="st">"org.Ss.eg.db"</span>,</span>
-<span>    <span class="st">"CePa"</span>, <span class="st">"eulerr"</span>, <span class="st">"rGREAT"</span>, <span class="st">"goseq"</span>, <span class="st">"GSVA"</span>, <span class="st">"simplifyEnrichment"</span>, <span class="st">"simona"</span>, </span>
+<span>    <span class="st">"reactome.db"</span>, <span class="st">"AnnotationHub"</span>,</span>
+<span>    <span class="st">"Orthology.eg.db"</span>, <span class="st">"microbenchmark"</span>, <span class="st">"ReactomePA"</span>, <span class="st">"DOSE"</span>, <span class="st">"org.Ss.eg.db"</span>,</span>
+<span>    <span class="st">"CePa"</span>, <span class="st">"eulerr"</span>, <span class="st">"rGREAT"</span>, <span class="st">"goseq"</span>, <span class="st">"GSVA"</span>, <span class="st">"simplifyEnrichment"</span>, </span>
 <span>    <span class="st">"enrichplot"</span>, <span class="st">"ggplot2"</span>, <span class="st">"ComplexHeatmap"</span>, <span class="st">"circlize"</span>, <span class="st">"genefilter"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"https://jokergoo.github.io/GSEAtraining_0.99.0.tar.gz"</span>, repo <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"source"</span><span class="op">)</span></span></code></pre></div>
 <p>The practice materials are also available at <a href="https://jokergoo.github.io/GSEAtraining/" class="external-link uri">https://jokergoo.github.io/GSEAtraining/</a>.</p>
+<p><strong>Do not use it for commercial purpose.</strong></p>
 
 
   </div>
